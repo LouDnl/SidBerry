@@ -1,0 +1,16 @@
+# ignore everything by default
+*
+
+# add specific files
+!.gitignore
+!sidberry.code-workspace
+!Makefile
+
+# add filetypes
+!*.md
+!*.sid
+
+# add folders and contents
+!src
+!src/**
+!sidfiles
