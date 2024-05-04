@@ -1,6 +1,7 @@
 //============================================================================
 // Description : SID file parser
-// Author      : Gianluca Ghettini
+// Authors     : Gianluca Ghettini, LouD
+// Last update : 2024
 //============================================================================
 
 #include <iostream>

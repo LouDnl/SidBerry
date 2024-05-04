@@ -1,3 +1,9 @@
+//============================================================================
+// Description : SidBerry wrapper to GPIO ports - Header File
+// Authors     : Gianluca Ghettini, Alessio Lombardo, LouD
+// Last update : 2024
+//============================================================================
+
 #pragma once
 #ifndef GPIOINTERFACE_H
 #define GPIOINTERFACE_H
@@ -9,14 +15,6 @@
 #define RASPBERRYPI 1
 #define ARIETTAG25 2
 #define CUSTOM 3
-
-// #define BOARD FTDI  // enable to always compile FTDI
-
-//============================================================================
-// Description  : SidBerry wrapper to GPIO ports - Header File
-// Author       : Alessio Lombardo
-// Modifications: LouD
-//============================================================================
 
 #if BOARD == RASPBERRYPI // Raspberry Pi
 extern "C"
@@ -88,7 +86,6 @@ extern "C"
 #define D7 AD7
 
 #elif BOARD == CUSTOM // Custom Board
-
 // 1) GPIO library (if needed)
 // 2) I/O Defines (if needed): INPUT mode, OUTPUT mode, HIGH level, LOW level
 // 3) Pinout Defines (mandatory): CS (Chip Select), A0-A4 (Address Bus), D0-D7 (Data Bus)

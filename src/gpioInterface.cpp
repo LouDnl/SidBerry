@@ -1,6 +1,7 @@
 //============================================================================
 // Description : SidBerry wrapper to GPIO ports
-// Author      : Alessio Lombardo
+// Authors     : Alessio Lombardo, LouD
+// Last update : 2024
 //============================================================================
 
 #include "gpioInterface.h"

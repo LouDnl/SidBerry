@@ -1,6 +1,7 @@
 //============================================================================
-// Description : SidBerry player & driver 
-// Author      : Gianluca Ghettini, Alessio Lombardo
+// Description : SidBerry player & driver
+// Authors     : Gianluca Ghettini, Alessio Lombardo, LouD
+// Last update : 2024
 //============================================================================
 
 #include <iostream>

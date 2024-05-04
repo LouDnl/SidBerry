@@ -1,3 +1,9 @@
+//============================================================================
+// Description : SID file parser
+// Authors     : Gianluca Ghettini, LouD
+// Last update : 2024
+//============================================================================
+
 #include "SidFile.h"
 
 SidFile::SidFile()

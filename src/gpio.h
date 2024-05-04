@@ -1,7 +1,7 @@
 //============================================================================
 // Description : FTDI ft2232h supporting GPIO header file for SidBerry
 // Author      : LouD
-// Year        : 2024
+// Last update : 2024
 //============================================================================
 
 #pragma once
