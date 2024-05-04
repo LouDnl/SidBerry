@@ -8,6 +8,25 @@ Such GPIO devices include RaspberryPi, AriettaG25, FTDI ft2232h and more if you 
 This repo contains an adaptation of SidBerry that includes playing SID files over USB on a Linux PC (Windows if you compile on Windows - no support)
 
 
+## Building SidBerry ##
+Examples:
+```shell
+# Default make will compile for FTDI with debug symbols enabled
+make
+make all
+# Make default binary with additional debug logging
+make debug
+
+# For the FTDI USB board with the "libftdi(-dev) and libftdi1(-dev)" libraries already installed, compile with:
+make ftdi
+# For the AriettaG25 board with the "wiringSAM" library already installed, compile with:
+make arietta25g
+# For the RaspberryPI board with the "wiringPi" library already installed, compile with:
+make raspberrypi
+# For other cards, after having appropriately modified "gpioInterface.cpp" and "gpioInterface.h", compile with:
+make custom
+```
+
 
 
 # Translation of the original [README](README-original.md) by [@gianlucag](https://github.com/gianlucag/SidBerry)
