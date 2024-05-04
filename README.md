@@ -1,80 +1,94 @@
 ## SidBerry ##
-### Music player per chip SID 6581 realizzato con RaspberryPi ###
+### Music player for SID 6581 chips using GPIO enabled devices ###
+Such GPIO devices include RaspberryPi, AriettaG25, FTDI ft2232h and more if you want you create the interface code.
+#### Original Author and repo of SiBerry ####
+[@gianlucag](https://github.com/gianlucag) ~ [SidBerry](https://github.com/gianlucag/SidBerry)
 
-Un SID jukebox realizzato con RasberryPi e il SID chip originale 6581. Il chip è alloggiato in una board custom collegata direttamente ai GPIO del Rasberry!
+## FTDIBerry ##
+This repo contains an adaptation of SidBerry that includes playing SID files over USB on a Linux PC (Windows if you compile on Windows - no support)
+
+
+
+
+# Translation of the original [README](README-original.md) by [@gianlucag](https://github.com/gianlucag/SidBerry)
+
+## SidBerry ##
+### Music player for SID 6581 chip made with RaspberryPi ###
+
+A jukebox SID made with RasberryPi and the original 6581 SID chip. The chip is housed in a custom board connected directly to the Rasberry GPIOs!
 
 [![ScreenShot](http://img.youtube.com/vi/i_vNFhmKoK4/0.jpg)](http://youtu.be/i_vNFhmKoK4)
 
-La board può riprodurre qualsiasi SID file, basta caricare i file .sid nella sdcard del Rasberry, avviare il player e collegare all'uscita jack un paio di casse preamplificate o meglio uno stereo.
+The board can play any SID file, just load the .sid files into the Rasberry sdcard, start the player and connect a pair of pre-amplified speakers or better yet a stereo to the jack output.
 
-### SID chip ###
+### Chip SID ###
 
-Il SID originale, nelle varianti 6581 e 8580, è controllato caricando i suoi 29 registri interni con i valori opportuni al momento opportuno. La sequenza di byte inviati genera l'effetto o la musica desiderati. Ogni registro è 1 byte ed i registri sono in tutto 29 quindi c'è bisogno di almeno 5 gpio di indirizzo (2^5=32) e 8 gpio di dati per un totale di 13 gpio. Un altro gpio è richiesto per la linea CS del chip (Chip Select).
+The original SID, in variants 6581 and 8580, is controlled by loading its 29 internal registers with the appropriate values at the appropriate time. The sequence of bytes sent generates the desired effect or music. Each register is 1 byte and there are 29 registers in total so you need at least 5 gpio of address (2^5=32) and 8 gpio of data for a total of 13 gpio. Another gpio is required for the chip's CS line (Chip Select).
 
 ![Alt text](/img/sid.png?raw=true "SID chip")
 
-Fortunatamente il Raspberry ha ben 17 gpio e i 14 richiesti sono perfettamente pilotabili con la libreria WiringPi. Gli altri pin del chip servono per i due condensatori dei filtri interni (CAP_a e CAP_b), alimentazione, linea R/W (che andremo a collegare direttamente a GND, siamo sempre in scrittura), entrata del segnale di clock, linea di reset (collegata sempre a VCC) e uscita audio analogica (AUDIO OUT).
+Fortunately, the Raspberry has 17 GPIOs and the 14 required are perfectly controllable with the WiringPi library. The other pins of the chip are used for the two internal filter capacitors (CAP_a and CAP_b), power supply, R/W line (which we will connect directly to GND, we are always writing), clock signal input, reset line ( always connected to VCC) and analogue audio output (AUDIO OUT).
 
-Ecco la configurazione dei registri interni del SID:
+Here is the configuration of the SID internal registers:
 
 ![Alt text](/img/registers.png?raw=true "registers")
 
-Qui per una descrizione più dettagliata del funzionamento interno del chip:
+Here for a more detailed description of the internal workings of the chip:
 
 http://www.waitingforfriday.com/index.php/Commodore_SID_6581_Datasheet
 
 ### Hardware ###
 
-La board riproduce esattamente le "condizioni al contorno" per il SID chip come se si trovasse alloggiato in un Commodore 64 originale. L'application note originale mostra chiaramente i collegamenti da effettuare e i pochi componenti esterni richiesti (generatore di clock, condensatori e poco altro).
+The board exactly reproduces the "boundary conditions" for the SID chip as if it were housed in an original Commodore 64. The original application note clearly shows the connections to be made and the few external components required (clock generator, capacitors and little else).
 
 ![Alt text](/img/orig.png?raw=true "orig")
 
-Unica differenza, le linee di indirizzo e dati vengono dirottate direttamente sui gpio del RasberryPi.
+The only difference is that the address and data lines are routed directly to the RasberryPi GPIOs.
 
-NOTA IMPORTANTE!: Il RasberryPi ragiona in logica CMOS a 3.3V mentre il SID chip è TTL a 5V quindi completamente incompatibili a livello di tensioni. Fortunatamente, siccome andiamo unicamente a scrivere nei registri, il RasberryPi dovrà soltanto applicare 3.3v ai capi del chip, più che sufficienti per essere interpretati come livello logico alto dal SID.
+IMPORTANT NOTE!: The RasberryPi reasons in CMOS logic at 3.3V while the SID chip is TTL at 5V therefore completely incompatible in terms of voltages. Fortunately, since we are only writing to registers, the RasberryPi will only have to apply 3.3v to the ends of the chip, more than enough to be interpreted as a high logic level by the SID.
 
 ![Alt text](/img/board.jpg?raw=true "board")
 
-Lo schematico completo:
+The complete schematic:
 
 ![Alt text](/img/sch.png?raw=true "SID chip")
 
 ### Software ###
 
-Il grosso del lavoro. Volevo una soluzione completamente stand-alone, senza l'ausilio di player esterni (come ACID64) e quindi ho realizzato un player che emula gran parte di un C64 originale. L'emulatore è necessario in quanto i file .sid sono programmi in linguaggio macchina 6502 e come tali devono essere eseguiti. Il player è scritto in C/C++ e basato sul mio emulatore MOS CPU 6502   più un semplice array di 65535 byte come memoria RAM (il C64 originale ha infatti 64K di RAM). Il player carica il codice programma contenuto nel file .sid nella RAM virtuale più un codice assembly aggiuntivo che ho chiamato micro-player: sostanzialmente si tratta di un programma minimale scritta in linguaggio macchina per CPU 6502 che assolve a due compiti specifici:
+The bulk of the work. I wanted a completely stand-alone solution, without the use of external players (like ACID64) and therefore I created a player that emulates a large part of an original C64. The emulator is necessary because .sid files are 6502 machine language programs and must be executed as such. The player is written in C/C++ and based on my MOS CPU 6502 emulator plus a simple array of 65535 bytes as RAM (the original C64 in fact has 64K of RAM). The player loads the program code contained in the .sid file into virtual RAM plus an additional assembly code that I called micro-player: essentially it is a minimal program written in machine language for the 6502 CPU that performs two specific tasks:
 
- * installare i vettori di reset e interrupt alle locazioni corrette
- * chiamare la play routine del codice sid ad ogni interrupt
+  * install the reset and interrupt vectors at the correct locations
+  * call the play routine of the sid code on every interrupt
 
-Questo perchè il codice che genera la musica in un comune C64 è una funzione chiamata ad intervalli regolari (50 volte al secondo, 50Hz). La chiamata è effettuata per mezzo di un interrupt esterno. In questo modo è possibile avere musica e un qualsiasi altro programma (videogioco ad esempio) in esecuzione nello stesso momento.
+This is because the code that generates music in an ordinary C64 is a function called at regular intervals (50 times per second, 50Hz). The call is made by means of an external interrupt. This way it is possible to have music and any other program (video game for example) running at the same time.
 
-Altre componenti sono il parser per i file .sid e la libreria WiringPi per pilotare i GPIO del RaspberryPi.
+Other components are the parser for .sid files and the WiringPi library to drive the RaspberryPi GPIOs.
 
-Questo il layout dell'intero applicativo, a destra è la memoria RAM virtuale 64K
+This is the layout of the entire application, on the right is the 64K virtual RAM memory
 
 ![Alt text](/img/diagram.png?raw=true "layout")
 
-Questo è il codice assembler del micro-player:
+This is the micro-player assembler code:
 
 ```
-// istallazione del vettore di reset (0x0000)
+// setup reset vector (0x0000)
 memory[0xFFFD] = 0x00;
 memory[0xFFFC] = 0x00;</p>
-// istallazione del vettore di interrupt, punta alla play routine (0x0013)
+// setup interrupt vector, point to play routine (0x0013)
 memory[0xFFFF] = 0x00;
 memory[0xFFFE] = 0x13;
 
-// codice del micro-player
+// micro-player code
 memory[0x0000] = 0xA9;
-memory[0x0001] = atoi(argv[2]); // il registro A viene caricato con il numero della traccia (0-16)
+memory[0x0001] = atoi(argv[2]); // register A is loaded with the track number (0-16)
 
-memory[0x0002] = 0x20; // salta alla init-routine nel codice sid
-memory[0x0003] = init &amp; 0xFF; // lo addr
+memory[0x0002] = 0x20; // jump to the init-routine in the sid code
+memory[0x0003] = init &amp; 0xFF; // I will add it
 memory[0x0004] = (init &gt;&gt; 8) &amp; 0xFF; // hi addr
 
-memory[0x0005] = 0x58; // abilitiamo gli interrupt
+memory[0x0005] = 0x58; // enable interrupts
 memory[0x0006] = 0xEA; // nop
-memory[0x0007] = 0x4C; // loop infinito
+memory[0x0007] = 0x4C; // infinite loops
 memory[0x0008] = 0x06;
 memory[0x0009] = 0x00;
 
@@ -82,26 +96,26 @@ memory[0x0009] = 0x00;
 memory[0x0013] = 0xEA; // nop
 memory[0x0014] = 0xEA; // nop
 memory[0x0015] = 0xEA; // nop
-memory[0x0016] = 0x20; // saltiamo alla play routine
+memory[0x0016] = 0x20; // let's jump to the play routine
 memory[0x0017] = play &amp; 0xFF;
 memory[0x0018] = (play &gt;&gt; 8) &amp; 0xFF;
 memory[0x0019] = 0xEA; // nop
 memory[0x001A] = 0x40; // return from interrupt
 ```
-### Modifiche al Software introdotte da Alessio Lombardo ###
-- Bug-Fixing (si ringrazia Thoroide, https://www.gianlucaghettini.net/sidberry2-raspberry-pi-6581-sid-player/)
-- Possibilità di compilare il sorgente per diverse schede/SoC. Oltre a RaspberryPI, è direttamente supportata la scheda Acme Systems AriettaG25. Altre schede possono essere aggiunte editando opportunamente i file "gpioInterface.cpp" e "gpioInterface.h". Se necessario, è possibile fare riferimento a librerie esterne per la gestione delle porte GPIO (ad esempio, "wiringPi" nel caso di Rapsberry o "wiringSam" nel caso di Arietta).
-- Aggiunti controlli al player: Pausa/Continua, traccia precedente/successiva, Restart, Uscita (con reset dei registri), Modalità Verbose.
+### Software changes introduced by Alessio Lombardo ###
+- Bug-Fixing (thanks to Thoroide, https://www.gianlucaghettini.net/sidberry2-raspberry-pi-6581-sid-player/)
+- Possibility to compile the source for different boards/SoCs. In addition to RaspberryPI, the Acme Systems AriettaG25 board is directly supported. Other cards can be added by appropriately editing the "gpioInterface.cpp" and "gpioInterface.h" files. If necessary, you can refer to external libraries for managing GPIO ports (for example, "wiringPi" in the case of Rapsberry or "wiringSam" in the case of Arietta).
+- Added controls to the player: Pause/Continue, previous/next track, Restart, Exit (with register reset), Verbose Mode.
 
-Per la scheda AriettaG25 con libreria "wiringSAM" già installata compilare con:
+For the AriettaG25 board with the "wiringSAM" library already installed, compile with:
 ```
 g++ *.cpp -D BOARD='ARIETTAG25' -o sidberry -lwiringSam
 ```
-Per la scheda RaspberryPI con libreria "wiringPi" già installata compilare con:
+For the RaspberryPI board with the "wiringPi" library already installed, compile with:
 ```
 g++ *.cpp -D BOARD='RASPBERRYPI' -o sidberry -lwiringPi
 ```
-Per altre schede, dopo aver opportunamente modificato "gpioInterface.cpp" e "gpioInterface.h", compilare con:
+For other cards, after having appropriately modified "gpioInterface.cpp" and "gpioInterface.h", compile with:
 ```
 g++ *.cpp -D BOARD='CUSTOM' -o sidberry
 ```
