@@ -10,6 +10,7 @@ SidFile::SidFile()
 {
 }
 
+/* Source: https://stackoverflow.com/a/2602885 */
 unsigned char SidFile::reverse(unsigned char b)
 {
 	b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
