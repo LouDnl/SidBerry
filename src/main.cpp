@@ -14,11 +14,17 @@
 
 uint8_t memory[65536]; // init 64K ram
 
+int custom_clock = 0;
+int custom_hertz = 0;
+int volume = 10;			// init volume at 10. max is 15
 bool verbose = false;		// init verbose boolean
 bool trace = false;			// init trace boolean
 bool exclock = false;		// init experimental clock speed boolean
 bool exrefresh = false;		// init experimental refresh boolean
 volatile sig_atomic_t stop; // init variable for ctrl+c
+bool real_read = false;     // use actual pin reading when true
+timeval t1, t2;
+long int elaps;
 
 /* function to track ctrl+c
    sigint excerpt from https://stackoverflow.com/questions/26965508/infinite-while-loop-and-control-c#26965628 */
