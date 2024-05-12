@@ -14,52 +14,50 @@
 #include <string.h>
 #include <ftdi.hpp>
 
-#include "sidberry.h"
 #include "macros.h"
 
 /* Helpers */
+
+/* Calculate actual pin by provided port */
 extern int calcPin(uint8_t pin, uint8_t port);
-/* Helpers */
+/* ID the correct interface port by provided pin */
 extern int idPortByPin(uint8_t pin);
-/* Helpers */
+/* ID the correct interface port by provided port */
 extern int idPort(uint8_t port);
 
-/* BitBang all pins output */
-extern int setupBitBang();
+/* GPIO Functions */
 
-/* BitBang full deinitializer */
-extern int breakdownBitBang();
-
+/* Enable a single interface port */
 extern int initPort(uint8_t port);
-extern int enableBitBang(uint8_t port);
-extern int disableBitBang(uint8_t port);
+/* Close a single interface port */
 extern int closePort(uint8_t port);
+/* Enable BitBang on a single interface port with all pins to output */
+extern int enableBitBang(uint8_t port);
+/* Disable BitBang on a single interface port */
+extern int disableBitBang(uint8_t port);
+/* Change the pinMode of a single pin to input or output in BitBang mode on a single interface port */
 extern void pinMode(uint8_t pin, uint8_t mode);
-
-/* Set a single pin to HIGH or LOW in BitBing mode */
+/* Change the pinMode with a pinmask for all pins to input or output in BitBang mode on a single interface port */
+extern void pinModePort(uint8_t port, unsigned char mask);
+/* Change the pin state of a single pin that is set to output in BitBang mode */
 extern void digitalWrite(uint8_t pin, int level);
-/* Read a single pin in BitBang mode */
+/* Read the pin state of a single pin that is set to input in BitBang mode */
 extern int digitalRead(uint8_t pin);
+/* Read the pin state of a single interface port that is set to input in BitBang mode */
+extern int digitalReadBus(uint8_t port);
 
 extern struct ftdi_context *ftdi1, *ftdi2;
-extern int f_port, gpiop, gpiopin, gpioport, gpiolevel, gpiostate;
+extern int f_port, gpiopin, gpioport;
 extern unsigned char maskport1[1];
 extern unsigned char maskport2[1];
-extern unsigned char gpiobuff1[1]; // = 0xFF;
-extern unsigned char gpiobuff2[1]; // = 0xFF;
+extern unsigned char gpiobuff1[1];
+extern unsigned char gpiobuff2[1];
+extern unsigned char readbuff[1];
 
-// #define INVERTEDLOGIC
-#ifndef INVERTEDLOGIC
-#define ON 1
-#define OFF 0
-#else
-#define ON 0
-#define OFF 1
-#endif
 #define INPUT 0
 #define OUTPUT 1
-#define HIGH ON
-#define LOW OFF
+#define HIGH 1
+#define LOW 0
 
 #define VENDOR 0x0403
 #define PRODUCT 0x6010
