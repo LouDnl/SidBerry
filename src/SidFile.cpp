@@ -170,7 +170,8 @@ string SidFile::GetCopyrightInfo()
 
 int SidFile::GetSongSpeed(int songNum)
 {
-	return (speedFlags & (1 << songNum)) ? SIDFILE_SPEED_60HZ : SIDFILE_SPEED_50HZ;
+	// return (speedFlags & (1 << songNum)) ? SIDFILE_SPEED_60HZ : SIDFILE_SPEED_50HZ;
+	return speedFlags;
 }
 
 int SidFile::GetNumOfSongs()
