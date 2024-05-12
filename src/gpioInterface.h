@@ -85,6 +85,11 @@ extern "C"
 #define D6 AD6
 #define D7 AD7
 
+int gpioInitPorts();  // FTDI Only
+int gpioClosePorts(); // FTDI Only
+int gpioEnableBB();   // FTDI Only
+int gpioDisableBB();  // FTDI Only
+
 #elif BOARD == CUSTOM // Custom Board
 // 1) GPIO library (if needed)
 // 2) I/O Defines (if needed): INPUT mode, OUTPUT mode, HIGH level, LOW level

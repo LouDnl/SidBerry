@@ -78,22 +78,50 @@ void gpioWrite(int pin, int level)
 
 #elif BOARD == FTDI // FTDI ft2232h ~ requires libftdi libftdi-dev libftdi1 libftdi1-dev
 
-int gpioSetup()
+int gpioInitPorts() // FTDI Only
 {
 	initPort(PORT1);
-	enableBitBang(PORT1);
 	initPort(PORT2);
+
+	return 0;
+}
+
+int gpioClosePorts() // FTDI Only
+{
+	closePort(PORT1);
+	closePort(PORT2);
+
+	return 0;
+}
+
+int gpioEnableBB() // FTDI Only
+{
+	enableBitBang(PORT1);
 	enableBitBang(PORT2);
+
+	return 0;
+}
+
+int gpioDisableBB() // FTDI Only
+{
+	disableBitBang(PORT1);
+	disableBitBang(PORT2);
+
+	return 0;
+}
+
+int gpioSetup()
+{
+	gpioInitPorts();
+	gpioEnableBB();
 
 	return 0;
 }
 
 int gpioStop()
 {
-	disableBitBang(PORT1);
-	closePort(PORT1);
-	disableBitBang(PORT2);
-	closePort(PORT2);
+	gpioDisableBB();
+	gpioClosePorts();
 
 	return 0;
 }
