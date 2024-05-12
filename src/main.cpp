@@ -35,21 +35,10 @@ void inthand(int signum)
 	stop = 1;
 }
 
-void TestWrite(uint16_t addr, uint8_t byte) // TODO: Finish
+/* Set up gpio pins for single read or write actions */
+void enableGpio()
 {
-
-	// setup wiring library, configure GPIOs
-	gpioSetup();
-
-	gpioMode(D0, OUTPUT);
-	gpioMode(D1, OUTPUT);
-	gpioMode(D2, OUTPUT);
-	gpioMode(D3, OUTPUT);
-	gpioMode(D4, OUTPUT);
-	gpioMode(D5, OUTPUT);
-	gpioMode(D6, OUTPUT);
-	gpioMode(D7, OUTPUT);
-
+	// address pins are always output
 	gpioMode(A0, OUTPUT);
 	gpioMode(A1, OUTPUT);
 	gpioMode(A2, OUTPUT);
@@ -57,43 +46,23 @@ void TestWrite(uint16_t addr, uint8_t byte) // TODO: Finish
 	gpioMode(A4, OUTPUT);
 
 #if BOARD == FTDI
-	gpioMode(RES, OUTPUT); // FTDI
-	gpioMode(RW, OUTPUT);  // FTDI
+	gpioMode(RES, OUTPUT); // FTDI has reset pin
+	gpioMode(RW, OUTPUT);  // FTDI has read/write pin
 #endif
-	gpioMode(CS, OUTPUT);
-
-	gpioWrite(D0, LOW);
-	gpioWrite(D1, LOW);
-	gpioWrite(D2, LOW);
-	gpioWrite(D3, LOW);
-	gpioWrite(D4, LOW);
-	gpioWrite(D5, LOW);
-	gpioWrite(D6, LOW);
-	gpioWrite(D7, LOW);
-
-	gpioWrite(A0, LOW);
-	gpioWrite(A1, LOW);
-	gpioWrite(A2, LOW);
-	gpioWrite(A3, LOW);
-	gpioWrite(A4, LOW);
+	gpioMode(CS, OUTPUT); // ChipSelect
 
 #if BOARD == FTDI
-	gpioWrite(RES, HIGH); // FTDI
-	gpioWrite(RW, LOW);	  // FTDI
+	gpioWrite(RES, HIGH); // FTDI reset always high so the SID is enabled
 #endif
 	gpioWrite(CS, HIGH);
+	printf("Setup finished\n");
+}
 
-	printf("\na: %02X, b: %02X\n", addr, byte);
+void TestWrite(uint16_t addr, uint8_t byte)
+{
+	printf("\na: %02X, b: %02X", addr, byte);
 
-	memory[addr] = byte;
 	uint16_t phyaddr = addr;
-
-	// NOTE: If you use a slow connection to tty device, the printf function may affect the playback speed
-	printf("one memwrite ~ addr: %04x byte: %04x phyaddr: %04x | Synth 1: $%02X%02X %02X%02X %02X %02X %02X | Synth 2: $%02X%02X %02X%02X %02X %02X %02X | Synth 3: $%02X%02X %02X%02X %02X %02X %02X\n",
-		   addr, byte, phyaddr,
-		   memory[0xD400], memory[0xD401], memory[0xD402], memory[0xD403], memory[0xD404], memory[0xD405], memory[0xD406],
-		   memory[0xD407], memory[0xD408], memory[0xD409], memory[0xD40A], memory[0xD40B], memory[0xD40C], memory[0xD40D],
-		   memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414]);
 
 	// set address to the bus
 	if (phyaddr & 0x01)
@@ -158,12 +127,136 @@ void TestWrite(uint16_t addr, uint8_t byte) // TODO: Finish
 
 	printf("\nOK\n");
 
-	gpioStop();
+	return;
+}
+
+void SingleWrite(uint16_t addr, uint8_t byte)
+{
+
+	pinModePort(PORT1, 0xFF); // Output
+	gpioWrite(RW, HIGH);
+
+	memory[addr] = byte;
+	uint16_t phyaddr = addr & 0x1f;
+
+
+	// NOTE: If you use a slow connection to tty device, the printf function may affect the playback speed
+	DBG("one memwrite ~ addr: %04x byte: %04x phyaddr: %04x | Synth 1: $%02X%02X %02X%02X %02X %02X %02X | Synth 2: $%02X%02X %02X%02X %02X %02X %02X | Synth 3: $%02X%02X %02X%02X %02X %02X %02X\n",
+		addr, byte, phyaddr,
+		memory[0xD400], memory[0xD401], memory[0xD402], memory[0xD403], memory[0xD404], memory[0xD405], memory[0xD406],
+		memory[0xD407], memory[0xD408], memory[0xD409], memory[0xD40A], memory[0xD40B], memory[0xD40C], memory[0xD40D],
+		memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414]);
+
+	// set address to the bus
+	if (phyaddr & 0x01)
+		gpioWrite(A0, HIGH);
+	else
+		gpioWrite(A0, LOW);
+	if (phyaddr & 0x02)
+		gpioWrite(A1, HIGH);
+	else
+		gpioWrite(A1, LOW);
+	if (phyaddr & 0x04)
+		gpioWrite(A2, HIGH);
+	else
+		gpioWrite(A2, LOW);
+	if (phyaddr & 0x08)
+		gpioWrite(A3, HIGH);
+	else
+		gpioWrite(A3, LOW);
+	if (phyaddr & 0x10)
+		gpioWrite(A4, HIGH);
+	else
+		gpioWrite(A4, LOW);
+
+	// set data to the bus
+	if (byte & 0x01)
+		gpioWrite(D0, HIGH);
+	else
+		gpioWrite(D0, LOW);
+	if (byte & 0x02)
+		gpioWrite(D1, HIGH);
+	else
+		gpioWrite(D1, LOW);
+	if (byte & 0x04)
+		gpioWrite(D2, HIGH);
+	else
+		gpioWrite(D2, LOW);
+	if (byte & 0x08)
+		gpioWrite(D3, HIGH);
+	else
+		gpioWrite(D3, LOW);
+	if (byte & 0x10)
+		gpioWrite(D4, HIGH);
+	else
+		gpioWrite(D4, LOW);
+	if (byte & 0x20)
+		gpioWrite(D5, HIGH);
+	else
+		gpioWrite(D5, LOW);
+	if (byte & 0x40)
+		gpioWrite(D6, HIGH);
+	else
+		gpioWrite(D6, LOW);
+	if (byte & 0x80)
+		gpioWrite(D7, HIGH);
+	else
+		gpioWrite(D7, LOW);
+
+	// assert cs line
+	gpioWrite(CS, LOW);
+	usleep(1);
+	gpioWrite(CS, HIGH);
+
 
 	return;
 }
 
-void MemWrite(uint16_t addr, uint8_t byte)
+uint8_t SingleRead(uint16_t addr) // TODO: Finish, FTDI only at the moment
+{
+	if (addr >= 0x0000 && addr <= 0xFFFF) // address decoding logic ~ needed otherwise ALL memreads are sent here
+	{
+		DBG("\nOne memread addr: %i, hex: 0x%04x\n", addr, addr);
+
+		uint16_t phyaddr = addr & 0x1f;
+		// set address to the bus
+		if (phyaddr & 0x01)
+			gpioWrite(A0, HIGH);
+		else
+			gpioWrite(A0, LOW);
+		if (phyaddr & 0x02)
+			gpioWrite(A1, HIGH);
+		else
+			gpioWrite(A1, LOW);
+		if (phyaddr & 0x04)
+			gpioWrite(A2, HIGH);
+		else
+			gpioWrite(A2, LOW);
+		if (phyaddr & 0x08)
+			gpioWrite(A3, HIGH);
+		else
+			gpioWrite(A3, LOW);
+		if (phyaddr & 0x10)
+			gpioWrite(A4, HIGH);
+		else
+			gpioWrite(A4, LOW);
+
+		unsigned char dataresult[1];
+		unsigned char dresult[7];
+
+		ftdi_tciflush(ftdi1);
+
+		digitalReadBus(PORT1);  // ISSUE: Not really working with SidkickPico
+
+		gpioWrite(CS, LOW);
+		usleep(1);
+		gpioWrite(CS, HIGH);
+
+	}
+	return memory[addr];
+}
+
+void MemWrite(uint16_t addr, uint8_t byte) // TODO: Finish, real_read is FTDI only at the moment
 {
 	if (addr >= 0xD400 && addr <= 0xD7FF) // address decoding login
 	{
@@ -191,6 +284,8 @@ void MemWrite(uint16_t addr, uint8_t byte)
 				   memory[0xD407], memory[0xD408], memory[0xD409], memory[0xD40A], memory[0xD40B], memory[0xD40C], memory[0xD40D],
 				   memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414]);
 		}
+		if (real_read == true)
+			pinModePort(PORT1, 0xFF); // Port to output
 
 		// set address to the bus
 		if (phyaddr & 0x01)
@@ -248,10 +343,13 @@ void MemWrite(uint16_t addr, uint8_t byte)
 		else
 			gpioWrite(D7, LOW);
 
+		if (real_read == true) gpioWrite(RW, LOW);  // rw to low for writing
 		// assert CS line (strobe)
 		gpioWrite(CS, LOW);
 		usleep(1);
 		gpioWrite(CS, HIGH);
+		if (real_read == true) gpioWrite(RW, HIGH);  // rw to high for reading
+		if (real_read == true) pinModePort(PORT1, 0x0);  // Port to input
 	}
 	else
 	{
@@ -261,23 +359,106 @@ void MemWrite(uint16_t addr, uint8_t byte)
 	return;
 }
 
-uint8_t MemRead(uint16_t addr) // TODO: Finish
+uint8_t MemRead(uint16_t addr) // TODO: Update with actual reading functions
 {
-	// printf("\naddr: %i, hex: 0x%04x\n", addr, addr);
+
 	if (addr >= 0xD400 && addr <= 0xD7FF) // address decoding logic
 	{
-		// access to SID chip
-		if ((addr & 0x00FF) == 0x001B)
+		if (real_read == false)  // default
 		{
-			// emulate read access to OSC3/Random register, return a random value
-			printf("\nread! 1b");
-			return rand();
-		}
-		if ((addr & 0x00FF) == 0x001C)
+			// Songs like Cantina_Band.sid from HVSC DEMOS use this!
+			// access to SID chip
+			if ((addr & 0x00FF) == 0x001B)
+			{
+				// emulate read access to OSC3/Random register, return a random value
+				printf("\nread! 1b");
+				return rand();
+			}
+			if ((addr & 0x00FF) == 0x001C)
+			{
+				// emulate access to envelope ENV3 register, return a random value
+				printf("\nread! 1c");
+				return rand();
+			}
+		} else
 		{
-			// emulate access to envelope ENV3 register, return a random value
-			printf("\nread! 1c");
-			return rand();
+			if (trace == true) printf("addr: %i, hex: 0x%04x | ", addr, addr);
+			// Songs like Cantina_Band.sid from HVSC DEMOS use this!
+			// access to SID chip
+			if ((addr & 0x00FF) == 0x001B)
+			{
+				// TEST
+				uint16_t phyaddr = addr & 0xFF;
+				unsigned char result[1];
+				// set address to the bus
+				if (phyaddr & 0x01)
+					gpioWrite(A0, HIGH);
+				else
+					gpioWrite(A0, LOW);
+				if (phyaddr & 0x02)
+					gpioWrite(A1, HIGH);
+				else
+					gpioWrite(A1, LOW);
+				if (phyaddr & 0x04)
+					gpioWrite(A2, HIGH);
+				else
+					gpioWrite(A2, LOW);
+				if (phyaddr & 0x08)
+					gpioWrite(A3, HIGH);
+				else
+					gpioWrite(A3, LOW);
+				if (phyaddr & 0x10)
+					gpioWrite(A4, HIGH);
+				else
+					gpioWrite(A4, LOW);
+
+				// ftdi_tciflush(ftdi1);  // empty buffer
+				gpioWrite(RW, HIGH);  // rw high for reading
+				gpioWrite(CS, LOW);   // cs low to enable chip
+				result[0] = digitalReadBus(PORT1);  // read the port
+
+				gpioWrite(CS, HIGH);  // cs back to high to disable chip
+				if (trace == true)
+					printf("read buff: 0x%02x 0b" PRINTF_BINARY_PATTERN_INT8 "\n", result[0], PRINTF_BYTE_TO_BINARY_INT8(result[0]));
+				return result[0];
+
+			}
+			if ((addr & 0x00FF) == 0x001C)
+			{
+				// TEST
+				uint16_t phyaddr = addr & 0xFF;
+				unsigned char result[1];
+				// set address to the bus
+				if (phyaddr & 0x01)
+					gpioWrite(A0, HIGH);
+				else
+					gpioWrite(A0, LOW);
+				if (phyaddr & 0x02)
+					gpioWrite(A1, HIGH);
+				else
+					gpioWrite(A1, LOW);
+				if (phyaddr & 0x04)
+					gpioWrite(A2, HIGH);
+				else
+					gpioWrite(A2, LOW);
+				if (phyaddr & 0x08)
+					gpioWrite(A3, HIGH);
+				else
+					gpioWrite(A3, LOW);
+				if (phyaddr & 0x10)
+					gpioWrite(A4, HIGH);
+				else
+					gpioWrite(A4, LOW);
+
+				// ftdi_tciflush(ftdi1);  // empty buffer
+				gpioWrite(RW, HIGH);  // rw high for reading
+				gpioWrite(CS, LOW);   // cs low to enable chip
+				result[0] = digitalReadBus(PORT1);  // read the port
+
+				gpioWrite(CS, HIGH);  // cs back to high to disable chip
+				if (trace == true) printf("read buff: 0x%02x 0b" PRINTF_BINARY_PATTERN_INT8 "\n", result[0], PRINTF_BYTE_TO_BINARY_INT8(result[0]));
+				return result[0];
+			}
 		}
 	}
 	return memory[addr];
@@ -349,51 +530,6 @@ int load_sid(mos6502 cpu, SidFile sid, int song_number)
 	memory[0x0019] = 0xEA; // 0x58 SEI
 	memory[0x001A] = 0x40; // RTI: return from interrupt
 
-	// setup wiring library, configure GPIOs
-	gpioSetup();
-
-	gpioMode(D0, OUTPUT);
-	gpioMode(D1, OUTPUT);
-	gpioMode(D2, OUTPUT);
-	gpioMode(D3, OUTPUT);
-	gpioMode(D4, OUTPUT);
-	gpioMode(D5, OUTPUT);
-	gpioMode(D6, OUTPUT);
-	gpioMode(D7, OUTPUT);
-
-	gpioMode(A0, OUTPUT);
-	gpioMode(A1, OUTPUT);
-	gpioMode(A2, OUTPUT);
-	gpioMode(A3, OUTPUT);
-	gpioMode(A4, OUTPUT);
-
-#if BOARD == FTDI
-	gpioMode(RES, OUTPUT); // FTDI
-	gpioMode(RW, OUTPUT);  // FTDI
-#endif
-	gpioMode(CS, OUTPUT);
-
-	gpioWrite(D0, LOW);
-	gpioWrite(D1, LOW);
-	gpioWrite(D2, LOW);
-	gpioWrite(D3, LOW);
-	gpioWrite(D4, LOW);
-	gpioWrite(D5, LOW);
-	gpioWrite(D6, LOW);
-	gpioWrite(D7, LOW);
-
-	gpioWrite(A0, LOW);
-	gpioWrite(A1, LOW);
-	gpioWrite(A2, LOW);
-	gpioWrite(A3, LOW);
-	gpioWrite(A4, LOW);
-
-#if BOARD == FTDI
-	gpioWrite(RES, HIGH); // FTDI
-	gpioWrite(RW, LOW);	  // FTDI
-#endif
-	gpioWrite(CS, HIGH);
-
 	cpu.Reset();
 	cpu.Run(CLOCK_CYCLES); // 100000 clockcycles
 	return 0;
@@ -447,6 +583,7 @@ int getch_noecho_special_char()
 
 void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused, bool *exit, uint8_t *mode_vol_reg, int *song_number, int *sec, int *min)
 {
+
 	if (key_press == 256 || key_press == (int)'q')
 	{ // Escape (reset all registers and quit)
 		printf("\n** Exit **\n");
@@ -462,19 +599,39 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
 	{ // Pause
 		if (*paused)
 		{
-			printf("\rPlay Sub-Song %d / %d [%02d:%02d]", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec);
+			printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 			fflush(stdout);
 			MemWrite(0xD418, *mode_vol_reg);
 			*paused = false;
 		}
 		else
 		{
-			printf("\rPlay Sub-Song %d / %d [%02d:%02d][PAUSE]", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec);
+			printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d [PAUSED]   ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 			fflush(stdout);
 			*mode_vol_reg = MemRead(0xD418);
 			MemWrite(0xD418, 0);
 			*paused = true;
 		}
+	}
+	else if (key_press == 119 || key_press == (int)'w')  // 119 W
+	{
+		if (volume < 15)
+		{
+			volume++;
+		}
+		*mode_vol_reg = volume;
+		MemWrite(0xD418, *mode_vol_reg);
+	}
+	else if (key_press == 115 || key_press == (int)'s')  // 115 S
+	{
+		if (volume > 0)
+		{
+			volume--;
+		}
+
+		// *mode_vol_reg = MemRead(0xD418);  // NOTE: This is totally unnescessary, D418 is not readable
+		*mode_vol_reg = volume;
+		MemWrite(0xD418, *mode_vol_reg);
 	}
 	else if (key_press == (int)'v')
 	{
@@ -490,7 +647,7 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
 		*min = 0;
 		*sec = 0;
 		*paused = false;
-		printf("\rPlay Sub-Song %d / %d [%02d:%02d]", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec);
+		printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 		fflush(stdout);
 	}
 	else if (key_press == 257)
@@ -502,7 +659,7 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
 		*min = 0;
 		*sec = 0;
 		*paused = false;
-		printf("\rPlay Sub-Song %d / %d [%02d:%02d]", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec);
+		printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 		fflush(stdout);
 	}
 	else if (key_press == 258)
@@ -514,22 +671,70 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
 		*min = 0;
 		*sec = 0;
 		*paused = false;
-		printf("\rPlay Sub-Song %d / %d [%02d:%02d]", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec);
+		printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 		fflush(stdout);
 	}
 	else if (key_press > 0)
 	{
 		if (*paused)
 		{
-			printf("\rPlay Sub-Song %d / %d [%02d:%02d][PAUSE]", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec);
+			printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d [PAUSED]    ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 			fflush(stdout);
 		}
 		else
 		{
-			printf("\rPlay Sub-Song %d / %d [%02d:%02d]", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec);
+			printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 			fflush(stdout);
 		}
 	}
+}
+
+void sidPlaySetup()
+{
+	// setup wiring library, configure GPIOs
+	gpioSetup();
+
+	gpioMode(D0, OUTPUT);
+	gpioMode(D1, OUTPUT);
+	gpioMode(D2, OUTPUT);
+	gpioMode(D3, OUTPUT);
+	gpioMode(D4, OUTPUT);
+	gpioMode(D5, OUTPUT);
+	gpioMode(D6, OUTPUT);
+	gpioMode(D7, OUTPUT);
+
+	gpioMode(A0, OUTPUT);
+	gpioMode(A1, OUTPUT);
+	gpioMode(A2, OUTPUT);
+	gpioMode(A3, OUTPUT);
+	gpioMode(A4, OUTPUT);
+
+#if BOARD == FTDI
+	gpioMode(RES, OUTPUT); // FTDI has reset pin
+	gpioMode(RW, OUTPUT);  // FTDI has read/write pin
+#endif
+	gpioMode(CS, OUTPUT);
+
+	gpioWrite(D0, LOW);
+	gpioWrite(D1, LOW);
+	gpioWrite(D2, LOW);
+	gpioWrite(D3, LOW);
+	gpioWrite(D4, LOW);
+	gpioWrite(D5, LOW);
+	gpioWrite(D6, LOW);
+	gpioWrite(D7, LOW);
+
+	gpioWrite(A0, LOW);
+	gpioWrite(A1, LOW);
+	gpioWrite(A2, LOW);
+	gpioWrite(A3, LOW);
+	gpioWrite(A4, LOW);
+
+#if BOARD == FTDI
+	gpioWrite(RES, HIGH); // FTDI reset pin to high to enable the board
+	gpioWrite(RW, LOW);	  // FTDI read/write to low to enable writing
+#endif
+	if (real_read == true) gpioWrite(CS, HIGH); // Chip select high
 }
 
 int main(int argc, char *argv[])
@@ -550,6 +755,18 @@ int main(int argc, char *argv[])
 		{
 			verbose = true;
 		}
+		else if (!strcmp(argv[param_count], "-cc") || !strcmp(argv[param_count], "--customclock"))
+		{
+			param_count++;
+			custom_clock = atoi(argv[param_count]) - 1;
+			printf("READ Decimal: %i\n", atoi(argv[param_count]) - 1);
+		}
+		else if (!strcmp(argv[param_count], "-ch") || !strcmp(argv[param_count], "--customhertz"))
+		{
+			param_count++;
+			custom_hertz = atoi(argv[param_count]) - 1;
+			printf("READ Decimal: %i\n", atoi(argv[param_count]) - 1);
+		}
 		else if (!strcmp(argv[param_count], "-ec") || !strcmp(argv[param_count], "--exclock"))
 		{
 			exclock = true;
@@ -567,20 +784,42 @@ int main(int argc, char *argv[])
 		{
 			trace = true;
 		}
+		else if (!strcmp(argv[param_count], "-start")) // TODO: FIX AND FINISH
+		{
+			printf("Starting the device\n");
+#if BOARD == FTDI
+			gpioInitPorts();
+			enableGpio();
+#endif
+			return 0;
+		}
+		else if (!strcmp(argv[param_count], "-stop")) // TODO: FIX AND FINISH
+		{
+			printf("Stopping the device\n");
+#if BOARD == FTDI
+			gpioInitPorts();
+#endif
+			gpioStop();
+
+			return 0;
+		}
 		else if (!strcmp(argv[param_count], "-r") || !strcmp(argv[param_count], "--read"))
 		{
 
 			if (argc != 3)
 			{
-				printf("Error, must supply no more then 1 argument to -r when reading registers! Supplied %i\n", argc - 1);
-				// std::cerr << "usage: " << argv[0] << " <" << N * 8 << "-bit value as " << NHEXDIGITS << " hex digits>\n";
+				printf("Error, usage: -r FFFF \n");
 				return 1;
 			}
 
-			printf("Decimal: %ld\n", strtol(argv[2], NULL, 16));
-			printf("Hex: 0x%04lx\n", strtol(argv[2], NULL, 16));
+			DBG("READ Decimal: %ld | Hex: 0x%04lx\n", strtol(argv[2], NULL, 16), strtol(argv[2], NULL, 16));
 
-			MemRead(strtol(argv[2], NULL, 16));
+#if BOARD == FTDI
+			gpioInitPorts();	 // Init the USB port
+			gpioWrite(RW, HIGH); // reading requires ReadWrite to be HIGH
+#endif
+
+			SingleRead(strtol(argv[2], NULL, 16));
 
 			return 0;
 		}
@@ -589,21 +828,29 @@ int main(int argc, char *argv[])
 
 			if (argc != 4)
 			{
-				printf("Error, usage: -w FF FF \n");
-				// std::cerr << "usage: " << argv[0] << " <" << N * 8 << "-bit value as " << NHEXDIGITS << " hex digits>\n";
+				printf("Error, usage: -w FFFF FFFF \n");
 				return 1;
 			}
-			printf("Decimal 1: %ld Decimal 2: %ld\n", strtol(argv[2], NULL, 16), strtol(argv[3], NULL, 16));
-			printf("Hex 1: 0x%02lx Hex 2: 0x%02lx\n", strtol(argv[2], NULL, 16), strtol(argv[3], NULL, 16));
 
-			gpioSetup();
+			DBG("WRITE Decimal 1: %ld | Hex 1: 0x%04lx | Decimal 2: %ld | Hex 2: 0x%04lx\n", strtol(argv[2], NULL, 16), strtol(argv[2], NULL, 16), strtol(argv[3], NULL, 16), strtol(argv[3], NULL, 16));
+
+#if BOARD == FTDI
+			gpioInitPorts();	// Init the USB port
+			gpioWrite(RW, LOW); // writing requires ReadWrite to be LOW
+#endif
+
 			TestWrite(strtol(argv[2], NULL, 16), strtol(argv[3], NULL, 16));
 
 			return 0;
 		}
+		else if (!strcmp(argv[param_count], "-rr") || !strcmp(argv[param_count], "--realreads"))
+		{
+			real_read = true;
+		}
 		else if (!strcmp(argv[param_count], "-V") || !strcmp(argv[param_count], "--version"))
 		{
-			cout << "SidBerry 3.1 - (April - 2024)" << endl;
+			cout << endl;
+			cout << "SidBerry 4.0 - (May - 2024)" << endl;
 			cout << "MOS SID (MOS6581/8580) Player for RaspberryPI, AriettaG25, FTDI ft2232h and others Linux-based systems with GPIO ports" << endl;
 			cout << "Hardware for RaspberryPI  : Gianluca Ghettini, Thoroide " << endl;
 			cout << "Hardware for AriettaG25   : Alessio Lombardo " << endl;
@@ -611,6 +858,9 @@ int main(int argc, char *argv[])
 			cout << "Low-level interface       : Gianluca Ghettini, Alessio Lombardo " << endl;
 			cout << "MOS6502 Emulator          : Gianluca Ghettini" << endl;
 			cout << "Sid Player                : Gianluca Ghettini, Alessio Lombardo " << endl;
+			cout << "Additional features       : LouD " << endl;
+			cout << endl;
+			return 0;
 		}
 		else if (!strcmp(argv[param_count], "-s") || !strcmp(argv[param_count], "--song"))
 		{
@@ -619,18 +869,29 @@ int main(int argc, char *argv[])
 		}
 		else if (!strcmp(argv[param_count], "-h") || !strcmp(argv[param_count], "--help"))
 		{
+			cout << endl;
 			cout << "Usage: " << argv[0] << " <Sid Filename> [Options]" << endl;
 			cout << "Options: " << endl;
 			cout << " -s,  --song          : Set Sub-Song number (default depends on the Sid File) " << endl;
 			cout << " -v,  --verbose       : Verbose mode (show SID registers content) " << endl;
-			cout << " -ec, --exclock       : Experimental mode (uses calculated clock speed) " << endl;
-			cout << " -er, --exrefresh     : Experimental mode (uses calculated refreshrate) " << endl;
-			cout << " -e,  --experimental  : Experimental mode (uses both calculated s) " << endl;
-			cout << " -t,  --trace         : Trace mode (prints additional trace logging) " << endl;
-			cout << " -r,  --read          : Read a register (prints content of a register) " << endl;
-			cout << " -w,  --write         : Write date to a register " << endl;
 			cout << " -V,  --version       : Show version and other informations " << endl;
 			cout << " -h,  --help          : Show this help message " << endl;
+			cout << " ------------------------------------------------------------------------------------------ " << endl;
+			cout << " Experimental features: " << endl;
+			cout << " -e,  --experimental  : Experimental mode (uses both calculated clockspeed and refreshrate) " << endl;
+			cout << " -ec, --exclock       : Experimental plays SID with the defined clockspeed (PAL/NTSC) " << endl;
+			cout << " -er, --exrefresh     : Experimental plays SID with the defined refreshrate (50Hz/60Hz) " << endl;
+			cout << " -cc, --customclock   : Experimental function to manually define the clockspeed " << endl;
+			cout << " -ch, --customhertz   : Experimental function to manually define the refreshrate (Hz) by ms " << endl;
+			cout << " -rr, --realreads     : Reads the datapins when a SID needs to (unfinished) " << endl;
+			cout << " -t,  --trace         : Trace mode (prints some additional trace logging) " << endl;
+			cout << " ------------------------------------------------------------------------------------------ " << endl;
+			cout << " Features for reading and writing single addresses: " << endl;
+			cout << " -start               : Inits the usb and ports (FTDI) for reading and writing " << endl;
+			cout << " -stop                : Stops the usb and ports (FTDI) for reading and writing " << endl;
+			cout << " -r,  --read          : Read a register (prints content of a register) " << endl;
+			cout << " -w,  --write         : Write date to a register " << endl;
+			cout << endl;
 			return 0;
 		}
 		else
@@ -659,12 +920,14 @@ int main(int argc, char *argv[])
 	}
 
 	const char *chiptype[4] = {"Unknown", "MOS6581", "MOS8580", "MOS6581 and MOS8580"};
-	const char *clockspeed[4] = {"Unknown", "PAL", "NTSC", "PAL and NTSC"};
+	const char *clockspeed[5] = {"Unknown", "PAL", "NTSC", "PAL and NTSC", "DREAN"};
 	int sidflags = sid.GetSidFlags();
+	uint32_t sidspeed = sid.GetSongSpeed(song_number); // + 1);
+	int curr_sidspeed = sidspeed & (1 << song_number); // ? 1 : 0;  // 1 ~ 60Hz, 2 ~ 50Hz
 	int ct = sid.GetChipType();
 	int cs = sid.GetClockSpeed();
-	int clock_speed = exclock == true ? clockSpeed[cs] : DEFAULT_CLOCK;
-	int refresh_rate = exrefresh == true ? refreshRate[cs] : HERTZ_50;
+	int clock_speed = exclock == true ? clockSpeed[cs] : custom_clock > 0 ? custom_clock : CLOCK_DEFAULT;
+	int refresh_rate = exrefresh == true ? refreshRate[cs] : custom_hertz > 0 ? custom_hertz : HERTZ_DEFAULT;
 
 	cout << "\n< Sid Info >" << endl;
 	cout << "---------------------------------------------" << endl;
@@ -687,8 +950,12 @@ int main(int argc, char *argv[])
 	cout << "Init Address       : $" << hex << sid.GetInitAddress() << endl;
 	cout << "Play Address       : $" << hex << sid.GetPlayAddress() << endl;
 	cout << "---------------------------------------------" << endl;
-	cout << "Song Speed         : $" << hex << sid.GetSongSpeed(song_number + 1) << endl;
-	cout << "Selected Sub-Song  : " << song_number + 1 << " / " << sid.GetNumOfSongs() << endl;
+	// cout << "Song Speed         : $" << hex << sid.GetSongSpeed(song_number + 1) << endl;
+	cout << "Song Speed         : $" << hex << curr_sidspeed << endl;
+	cout << "Song Speeds        : $0x" << hex << sidflags << " 0b" << bitset<32>{sidflags} << endl;  // BUG: Always 0x14 !?
+	cout << "Selected Sub-Song  : " << dec << song_number + 1 << " / " << dec << sid.GetNumOfSongs() << endl;
+
+	sidPlaySetup();  // Setup gpios for playing SID files
 
 	srand(0);
 	mos6502 cpu(MemRead, MemWrite);
@@ -696,9 +963,6 @@ int main(int argc, char *argv[])
 	int time_unit = 0;
 	int sec = 0;
 	int min = 0;
-
-	timeval t1, t2;
-	long int elaps;
 
 	load_sid(cpu, sid, song_number);
 
@@ -711,10 +975,12 @@ int main(int argc, char *argv[])
 	cout << "Right Arrow : Next Sub-Song " << endl;
 	cout << "R           : Restart current Sub-Song " << endl;
 	cout << "V           : Verbose (show SID registers) " << endl;
+	cout << "W           : Volume up " << endl;
+	cout << "S           : Volume down " << endl;
 	cout << "Q or Escape : Quit " << endl
 		 << endl;
 
-	printf("\rPlay Sub-Song %d / %d [%02d:%02d]", song_number + 1, sid.GetNumOfSongs(), min, sec);
+	printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", song_number + 1, sid.GetNumOfSongs(), min, sec, volume);
 	fflush(stdout);
 
 	bool paused = false;
@@ -766,7 +1032,7 @@ int main(int argc, char *argv[])
 			}
 			if (!verbose)
 			{
-				printf("\rPlay Sub-Song %d / %d [%02d:%02d]", song_number + 1, sid.GetNumOfSongs(), min, sec);
+				printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", song_number + 1, sid.GetNumOfSongs(), min, sec, volume);
 				// printf("\rPlay Sub-Song %d / %d [%02d:%02d] Memory address: $%04x", song_number + 1, sid.GetNumOfSongs(), min, sec, phyaddr);
 				fflush(stdout);
 			}
