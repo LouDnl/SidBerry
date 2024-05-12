@@ -30,6 +30,7 @@ long int elaps;
    sigint excerpt from https://stackoverflow.com/questions/26965508/infinite-while-loop-and-control-c#26965628 */
 void inthand(int signum)
 {
+	gpioWrite(RES, LOW);  // make sure any sound stops by resetting the sid
 	gpioStop();
 	stop = 1;
 }
