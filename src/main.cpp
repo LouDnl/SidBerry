@@ -4,40 +4,58 @@
 // Last update : 2024
 //============================================================================
 
-#include "macros.h"
 #include "mos6502.h"
 #include "SidFile.h"
-#include "gpioInterface.h"
 #include "sidberry.h"
 
 #pragma GCC diagnostic ignored "-Wnarrowing"
 
-uint8_t memory[65536]; // init 64K ram
-
-int custom_clock = 0;
-int custom_hertz = 0;
-int volume = 10;			// init volume at 10. max is 15
-bool verbose = false;		// init verbose boolean
-bool trace = false;			// init trace boolean
-bool exclock = false;		// init experimental clock speed boolean
-bool exrefresh = false;		// init experimental refresh boolean
-volatile sig_atomic_t stop; // init variable for ctrl+c
-bool real_read = false;     // use actual pin reading when true
+uint8_t memory[65536];         // init 64K ram
+int sidcount = 1;              // default to 1 sid
+int custom_clock = 0;          // default custom clock to 0
+int custom_hertz = 0;          // default custom hertz to 0
+int volume = 15;			   // init volume at 10. max is 15
+bool verbose = false;		   // init verbose boolean
+bool trace = false;			   // init trace boolean
+bool calculatedclock = false;  // init calculated clock speed boolean
+bool calculatedhz = false;	   // init calculated refresh boolean
+volatile sig_atomic_t stop;    // init variable for ctrl+c
+#if BOARD == USBSIDPICO
+bool real_read = true;         // use actual pin reading when USBSID-Pico
+#else
+bool real_read = false;        // use actual pin reading when true
+#endif
 timeval t1, t2;
 long int elaps;
 
-/* function to track ctrl+c
-   sigint excerpt from https://stackoverflow.com/questions/26965508/infinite-while-loop-and-control-c#26965628 */
+
 void inthand(int signum)
 {
-	gpioWrite(RES, LOW);  // make sure any sound stops by resetting the sid
-	gpioStop();
+	exitPlayer();
 	stop = 1;
 }
 
-/* Set up gpio pins for single read or write actions */
-void enableGpio()
+void exitPlayer(void)  // TODO: Add wait for current USB transfer to finish for clean exit
 {
+	printf("\n** Exit **\n");
+	for (int j = 0; j < sidcount; j++) {
+		for (int i = 0xD400; i < 0xD418; i++) {
+			MemWrite((i + (j * 0x20)), 0);
+		}
+	}
+	#if BOARD == USBSIDPICO
+	resetSID();
+	#else
+	gpioWrite(RES, LOW);  // make sure any sound stops by resetting the sid
+	#endif
+	gpioStop();
+}
+
+void enableGpio(void)
+{
+	#if BOARD == USBSIDPICO
+	/* Do nothing, not needed */
+	#else
 	// address pins are always output
 	gpioMode(A0, OUTPUT);
 	gpioMode(A1, OUTPUT);
@@ -45,16 +63,17 @@ void enableGpio()
 	gpioMode(A3, OUTPUT);
 	gpioMode(A4, OUTPUT);
 
-#if BOARD == FTDI
+	#if BOARD == FTDI
 	gpioMode(RES, OUTPUT); // FTDI has reset pin
 	gpioMode(RW, OUTPUT);  // FTDI has read/write pin
-#endif
+	#endif
 	gpioMode(CS, OUTPUT); // ChipSelect
 
-#if BOARD == FTDI
+	#if BOARD == FTDI
 	gpioWrite(RES, HIGH); // FTDI reset always high so the SID is enabled
-#endif
+	#endif
 	gpioWrite(CS, HIGH);
+	#endif
 	printf("Setup finished\n");
 }
 
@@ -130,18 +149,35 @@ void TestWrite(uint16_t addr, uint8_t byte)
 	return;
 }
 
-void SingleWrite(uint16_t addr, uint8_t byte)
+void TestLoop(void)
 {
+	int addr;
+	int byte;
+	printf("\n\n");
 
+	while (1)
+	{
+		printf("\naddr:");
+		scanf("%d", &addr);
+		printf("\nbyte:");
+		scanf("%d", &byte);
+		TestWrite(addr, byte);
+	}
+}
+
+void SingleWrite(uint16_t addr, uint8_t byte)  // TODO: Add USBSID-Pico support
+{
+	#if BOARD == FTDI
 	pinModePort(PORT1, 0xFF); // Output
 	gpioWrite(RW, HIGH);
+	#endif
 
 	memory[addr] = byte;
 	uint16_t phyaddr = addr & 0x1f;
 
 
 	// NOTE: If you use a slow connection to tty device, the printf function may affect the playback speed
-	DBG("one memwrite ~ addr: %04x byte: %04x phyaddr: %04x | Synth 1: $%02X%02X %02X%02X %02X %02X %02X | Synth 2: $%02X%02X %02X%02X %02X %02X %02X | Synth 3: $%02X%02X %02X%02X %02X %02X %02X\n",
+	DBG("one single memwrite ~ addr: %04x byte: %04x phyaddr: %04x | Synth 1: $%02X%02X %02X%02X %02X %02X %02X | Synth 2: $%02X%02X %02X%02X %02X %02X %02X | Synth 3: $%02X%02X %02X%02X %02X %02X %02X\n",
 		addr, byte, phyaddr,
 		memory[0xD400], memory[0xD401], memory[0xD402], memory[0xD403], memory[0xD404], memory[0xD405], memory[0xD406],
 		memory[0xD407], memory[0xD408], memory[0xD409], memory[0xD40A], memory[0xD40B], memory[0xD40C], memory[0xD40D],
@@ -208,16 +244,15 @@ void SingleWrite(uint16_t addr, uint8_t byte)
 	usleep(1);
 	gpioWrite(CS, HIGH);
 
-
 	return;
 }
 
-uint8_t SingleRead(uint16_t addr) // TODO: Finish, FTDI only at the moment
+uint8_t SingleRead(uint16_t addr)  // NOTICE: USB devices only
 {
 	if (addr >= 0x0000 && addr <= 0xFFFF) // address decoding logic ~ needed otherwise ALL memreads are sent here
 	{
-		DBG("\nOne memread addr: %i, hex: 0x%04x\n", addr, addr);
-
+		DBG("\nOne single memread addr: %i, hex: 0x%04x\n", addr, addr);
+		#if BOARD != USBSIDPICO
 		uint16_t phyaddr = addr & 0x1f;
 		// set address to the bus
 		if (phyaddr & 0x01)
@@ -244,21 +279,35 @@ uint8_t SingleRead(uint16_t addr) // TODO: Finish, FTDI only at the moment
 		unsigned char dataresult[1];
 		unsigned char dresult[7];
 
+		#if BOARD == FTDI
 		ftdi_tciflush(ftdi1);
-
-		digitalReadBus(PORT1);  // ISSUE: Not really working with SidkickPico
+		digitalReadBus(PORT1);  // ISSUE: Not really working with FTDIBerry
+		#endif
 
 		gpioWrite(CS, LOW);
 		usleep(1);
 		gpioWrite(CS, HIGH);
+		#endif
+		#if BOARD == USBSIDPICO
+		/* USBSID code */
+		uint16_t phyaddr = addr & 0xFF;
+		unsigned char result[1];
+		unsigned char buff[4];  /* 4 Byte buffer */
+		buff[0] = 0x0;  /* Read */
+		buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0x4D */
+		buff[2] = phyaddr;  /* Address Byte 2 ~ 0x1C */
+		buff[3] = 0x0;  /* Data bus value */
+		sidRead(buff, result);
+		if (trace == true && verbose != true) printf("Read result: 0x%02x 0b" PRINTF_BINARY_PATTERN_INT8 " from addr: 0x%04x \r\n", result[0], PRINTF_BYTE_TO_BINARY_INT8(result[0]), addr);
+		#endif
 
 	}
 	return memory[addr];
 }
 
-void MemWrite(uint16_t addr, uint8_t byte) // TODO: Finish, real_read is FTDI only at the moment
+void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
 {
-	if (addr >= 0xD400 && addr <= 0xD7FF) // address decoding login
+	if (addr >= 0xD400 && addr <= 0xDFFF)
 	{
 		// access to SID chip
 
@@ -267,25 +316,47 @@ void MemWrite(uint16_t addr, uint8_t byte) // TODO: Finish, real_read is FTDI on
 		if (verbose && !trace)
 		{
 			// NOTE: If you use a slow connection to tty device, the printf function may affect the playback speed
-			printf("%02X%02X %02X%02X %02X %02X %02X %02X%02X %02X%02X %02X %02X %02X %02X%02X %02X%02X %02X %02X %02X\n",
+			printf("Voice 1: $%02X%02X %02X%02X %02X %02X %02X | Voice 2: $%02X%02X %02X%02X %02X %02X %02X | Voice 3: $%02X%02X %02X%02X %02X %02X %02X | Filter: %02X %02X %02X Vol: %02X \n",
 				   memory[0xD400], memory[0xD401], memory[0xD402], memory[0xD403], memory[0xD404], memory[0xD405], memory[0xD406],
 				   memory[0xD407], memory[0xD408], memory[0xD409], memory[0xD40A], memory[0xD40B], memory[0xD40C], memory[0xD40D],
-				   memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414]);
+				   memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414],
+				   memory[0xD415], memory[0xD416], memory[0xD417], memory[0xD418]);
 		}
 
-		uint16_t phyaddr = addr & 0x1f;
+		uint16_t phyaddr = addr & 0x7F;     /* 4 SIDs max */
 
+		#if BOARD != USBSIDPICO
 		if (verbose && trace)
 		{
 			// NOTE: If you use a slow connection to tty device, the printf function may affect the playback speed
-			printf("one memwrite ~ addr: %04x byte: %04x phyaddr: %04x | Synth 1: $%02X%02X %02X%02X %02X %02X %02X | Synth 2: $%02X%02X %02X%02X %02X %02X %02X | Synth 3: $%02X%02X %02X%02X %02X %02X %02X\n",
+			printf("one memwrite ~ addr: %04x byte: %04x phyaddr: %04x | Voice 1: $%02X%02X %02X%02X %02X %02X %02X | Voice 2: $%02X%02X %02X%02X %02X %02X %02X | Voice 3: $%02X%02X %02X%02X %02X %02X %02X | Filter: %02X %02X %02X Vol: %02X \n",
 				   addr, byte, phyaddr,
 				   memory[0xD400], memory[0xD401], memory[0xD402], memory[0xD403], memory[0xD404], memory[0xD405], memory[0xD406],
 				   memory[0xD407], memory[0xD408], memory[0xD409], memory[0xD40A], memory[0xD40B], memory[0xD40C], memory[0xD40D],
-				   memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414]);
+				   memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414],
+				   memory[0xD415], memory[0xD416], memory[0xD417], memory[0xD418]);
 		}
+		#endif
+		#if BOARD == FTDI
 		if (real_read == true)
+		{
 			pinModePort(PORT1, 0xFF); // Port to output
+		}
+		#endif
+
+		#if BOARD == USBSIDPICO
+		unsigned char buff[4];  /* 4 Byte buffer */
+		buff[0] = 0x10;         /* Write */
+		buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0xD4 */
+		buff[2] = phyaddr;      /* Address Byte 2 ~ 0x1C */
+		buff[3] = byte;         /* Data bus value */
+		sidWrite(buff);
+		if (verbose && trace)
+		{
+			printf("one memwrite ~ $addr: %04x phyrange: %02x phyaddr: %02x byte: %02x\n",
+				   addr, buff[1], phyaddr, byte);
+		}
+		#else
 
 		// set address to the bus
 		if (phyaddr & 0x01)
@@ -348,8 +419,13 @@ void MemWrite(uint16_t addr, uint8_t byte) // TODO: Finish, real_read is FTDI on
 		gpioWrite(CS, LOW);
 		usleep(1);
 		gpioWrite(CS, HIGH);
-		if (real_read == true) gpioWrite(RW, HIGH);  // rw to high for reading
-		if (real_read == true) pinModePort(PORT1, 0x0);  // Port to input
+		if (real_read == true) {
+			gpioWrite(RW, HIGH);      // rw to high for reading
+		#if BOARD == FTDI
+			pinModePort(PORT1, 0x0);  // Port to input
+		#endif
+		}
+		#endif
 	}
 	else
 	{
@@ -359,10 +435,10 @@ void MemWrite(uint16_t addr, uint8_t byte) // TODO: Finish, real_read is FTDI on
 	return;
 }
 
-uint8_t MemRead(uint16_t addr) // TODO: Update with actual reading functions
+uint8_t MemRead(uint16_t addr)
 {
 
-	if (addr >= 0xD400 && addr <= 0xD7FF) // address decoding logic
+	if (addr >= 0xD400 && addr <= 0xDFFF) // address decoding logic
 	{
 		if (real_read == false)  // default
 		{
@@ -382,14 +458,22 @@ uint8_t MemRead(uint16_t addr) // TODO: Update with actual reading functions
 			}
 		} else
 		{
-			if (trace == true) printf("addr: %i, hex: 0x%04x | ", addr, addr);
 			// Songs like Cantina_Band.sid from HVSC DEMOS use this!
 			// access to SID chip
-			if ((addr & 0x00FF) == 0x001B)
+			if ((addr & 0x001F) == 0x001B || (addr & 0x001F) == 0x001C)
 			{
-				// TEST
 				uint16_t phyaddr = addr & 0xFF;
 				unsigned char result[1];
+
+				#if BOARD == USBSIDPICO
+				/* USBSID code */
+				unsigned char buff[4];  /* 4 Byte buffer */
+				buff[0] = 0x0;          /* Read */
+				buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0xD4 */
+				buff[2] = phyaddr;      /* Address Byte 2 ~ 0x1C */
+				buff[3] = 0x0;          /* Data bus value */
+				sidRead(buff, result);
+				#else
 				// set address to the bus
 				if (phyaddr & 0x01)
 					gpioWrite(A0, HIGH);
@@ -415,48 +499,13 @@ uint8_t MemRead(uint16_t addr) // TODO: Update with actual reading functions
 				// ftdi_tciflush(ftdi1);  // empty buffer
 				gpioWrite(RW, HIGH);  // rw high for reading
 				gpioWrite(CS, LOW);   // cs low to enable chip
+				#if BOARD == FTDI
 				result[0] = digitalReadBus(PORT1);  // read the port
-
+				#endif
 				gpioWrite(CS, HIGH);  // cs back to high to disable chip
-				if (trace == true)
-					printf("read buff: 0x%02x 0b" PRINTF_BINARY_PATTERN_INT8 "\n", result[0], PRINTF_BYTE_TO_BINARY_INT8(result[0]));
-				return result[0];
 
-			}
-			if ((addr & 0x00FF) == 0x001C)
-			{
-				// TEST
-				uint16_t phyaddr = addr & 0xFF;
-				unsigned char result[1];
-				// set address to the bus
-				if (phyaddr & 0x01)
-					gpioWrite(A0, HIGH);
-				else
-					gpioWrite(A0, LOW);
-				if (phyaddr & 0x02)
-					gpioWrite(A1, HIGH);
-				else
-					gpioWrite(A1, LOW);
-				if (phyaddr & 0x04)
-					gpioWrite(A2, HIGH);
-				else
-					gpioWrite(A2, LOW);
-				if (phyaddr & 0x08)
-					gpioWrite(A3, HIGH);
-				else
-					gpioWrite(A3, LOW);
-				if (phyaddr & 0x10)
-					gpioWrite(A4, HIGH);
-				else
-					gpioWrite(A4, LOW);
-
-				// ftdi_tciflush(ftdi1);  // empty buffer
-				gpioWrite(RW, HIGH);  // rw high for reading
-				gpioWrite(CS, LOW);   // cs low to enable chip
-				result[0] = digitalReadBus(PORT1);  // read the port
-
-				gpioWrite(CS, HIGH);  // cs back to high to disable chip
-				if (trace == true) printf("read buff: 0x%02x 0b" PRINTF_BINARY_PATTERN_INT8 "\n", result[0], PRINTF_BYTE_TO_BINARY_INT8(result[0]));
+				#endif
+				if (trace == true && verbose != true) printf("Read result: 0x%02x 0b" PRINTF_BINARY_PATTERN_INT8 " from addr: 0x%04x \r\n", result[0], PRINTF_BYTE_TO_BINARY_INT8(result[0]), addr);
 				return result[0];
 			}
 		}
@@ -464,27 +513,17 @@ uint8_t MemRead(uint16_t addr) // TODO: Update with actual reading functions
 	return memory[addr];
 }
 
-void TestLoop()
-{
-	int addr;
-	int byte;
-	printf("\n\n");
-
-	while (1)
-	{
-		printf("\naddr:");
-		scanf("%d", &addr);
-		printf("\nbyte:");
-		scanf("%d", &byte);
-		TestWrite(addr, byte);
-	}
-}
-
 int load_sid(mos6502 cpu, SidFile sid, int song_number)
 {
 	for (unsigned int i = 0; i < 65536; i++)
 	{
 		memory[i] = 0x00; // fill with NOPs
+	}
+
+	/* Make sure volume does not mute on play for SID1 to max sidcount */
+	for (int i = 0; i < sidcount; i++) {
+		MemWrite((VOL_ADDR + (i * 0x20)), 0xE);
+		memory[(VOL_ADDR + (i * 0x20))] = 0xE;
 	}
 
 	uint16_t load = sid.GetLoadAddress();
@@ -535,9 +574,8 @@ int load_sid(mos6502 cpu, SidFile sid, int song_number)
 	return 0;
 }
 
-int getch_noecho_special_char()
+int getch_noecho_special_char(void)
 {
-
 	int char_code = 0;
 	int buf = 0;
 	char buf2[3] = {0, 0, 0};
@@ -586,52 +624,54 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
 
 	if (key_press == 256 || key_press == (int)'q')
 	{ // Escape (reset all registers and quit)
-		printf("\n** Exit **\n");
-		for (int i = 0xD400; i < 0xD414; i++)
-		{
-			MemWrite(i, 0);
-		}
-		gpioStop();
+		exitPlayer();
 		*paused = false;
 		*exit = true;
 	}
-	else if (key_press == 32)
+	else if (key_press == 32)  // space
 	{ // Pause
 		if (*paused)
 		{
 			printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 			fflush(stdout);
-			MemWrite(0xD418, *mode_vol_reg);
+			for (int i = 0; i < sidcount; i++) {
+				MemWrite((VOL_ADDR + (i * 0x20)), *mode_vol_reg);
+			}
 			*paused = false;
 		}
 		else
 		{
 			printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d [PAUSED]   ", (*song_number) + 1, sid.GetNumOfSongs(), *min, *sec, volume);
 			fflush(stdout);
-			*mode_vol_reg = MemRead(0xD418);
-			MemWrite(0xD418, 0);
+			for (int i = 0; i < sidcount; i++) {
+				MemWrite((VOL_ADDR + (i * 0x20)), 0);
+			}
+			#if BOARD == USBSIDPICO
+			pauseSID();
+		    #endif
 			*paused = true;
 		}
 	}
 	else if (key_press == 119 || key_press == (int)'w')  // 119 W
 	{
-		if (volume < 15)
-		{
+		if (volume < 15) {
 			volume++;
 		}
 		*mode_vol_reg = volume;
-		MemWrite(0xD418, *mode_vol_reg);
+		for (int i = 0; i < sidcount; i++) {
+			MemWrite((VOL_ADDR + (i * 0x20)), *mode_vol_reg);
+		}
 	}
 	else if (key_press == 115 || key_press == (int)'s')  // 115 S
 	{
-		if (volume > 0)
-		{
+		if (volume > 0) {
 			volume--;
 		}
-
 		// *mode_vol_reg = MemRead(0xD418);  // NOTE: This is totally unnescessary, D418 is not readable
 		*mode_vol_reg = volume;
-		MemWrite(0xD418, *mode_vol_reg);
+		for (int i = 0; i < sidcount; i++) {
+			MemWrite((VOL_ADDR + (i * 0x20)), *mode_vol_reg);
+		}
 	}
 	else if (key_press == (int)'v')
 	{
@@ -689,11 +729,11 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
 	}
 }
 
-void sidPlaySetup()
+void sidPlaySetup(void)
 {
 	// setup wiring library, configure GPIOs
 	gpioSetup();
-
+	#if BOARD != USBSIDPICO
 	gpioMode(D0, OUTPUT);
 	gpioMode(D1, OUTPUT);
 	gpioMode(D2, OUTPUT);
@@ -709,10 +749,10 @@ void sidPlaySetup()
 	gpioMode(A3, OUTPUT);
 	gpioMode(A4, OUTPUT);
 
-#if BOARD == FTDI
+	#if BOARD == FTDI
 	gpioMode(RES, OUTPUT); // FTDI has reset pin
 	gpioMode(RW, OUTPUT);  // FTDI has read/write pin
-#endif
+	#endif
 	gpioMode(CS, OUTPUT);
 
 	gpioWrite(D0, LOW);
@@ -730,11 +770,12 @@ void sidPlaySetup()
 	gpioWrite(A3, LOW);
 	gpioWrite(A4, LOW);
 
-#if BOARD == FTDI
+	#if BOARD == FTDI
 	gpioWrite(RES, HIGH); // FTDI reset pin to high to enable the board
 	gpioWrite(RW, LOW);	  // FTDI read/write to low to enable writing
-#endif
+	#endif
 	if (real_read == true) gpioWrite(CS, HIGH); // Chip select high
+	#endif
 }
 
 int main(int argc, char *argv[])
@@ -744,6 +785,8 @@ int main(int argc, char *argv[])
 
 	string filename = "";
 	int song_number = 0;
+	calculatedclock = true;
+	calculatedhz = true;
 
 	for (int param_count = 1; param_count < argc; param_count++)
 	{
@@ -754,6 +797,10 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[param_count], "-v") || !strcmp(argv[param_count], "--verbose"))
 		{
 			verbose = true;
+		}
+		else if (!strcmp(argv[param_count], "-t") || !strcmp(argv[param_count], "--trace"))
+		{
+			trace = true;
 		}
 		else if (!strcmp(argv[param_count], "-cc") || !strcmp(argv[param_count], "--customclock"))
 		{
@@ -767,79 +814,74 @@ int main(int argc, char *argv[])
 			custom_hertz = atoi(argv[param_count]) - 1;
 			printf("READ Decimal: %i\n", atoi(argv[param_count]) - 1);
 		}
-		else if (!strcmp(argv[param_count], "-ec") || !strcmp(argv[param_count], "--exclock"))
+		else if (!strcmp(argv[param_count], "-clc") || !strcmp(argv[param_count], "--calclock"))
 		{
-			exclock = true;
+			calculatedclock = false;
 		}
-		else if (!strcmp(argv[param_count], "-er") || !strcmp(argv[param_count], "--exrefresh"))
+		else if (!strcmp(argv[param_count], "-clh") || !strcmp(argv[param_count], "--calhertz"))
 		{
-			exrefresh = true;
+			calculatedhz = false;
 		}
-		else if (!strcmp(argv[param_count], "-e") || !strcmp(argv[param_count], "--experimental"))
+		else if (!strcmp(argv[param_count], "-cl") || !strcmp(argv[param_count], "--calculated"))
 		{
-			exclock = true;
-			exrefresh = true;
-		}
-		else if (!strcmp(argv[param_count], "-t") || !strcmp(argv[param_count], "--trace"))
-		{
-			trace = true;
+			calculatedclock = false;
+			calculatedhz = false;
 		}
 		else if (!strcmp(argv[param_count], "-start")) // TODO: FIX AND FINISH
 		{
 			printf("Starting the device\n");
-#if BOARD == FTDI
+		#if BOARD == FTDI
 			gpioInitPorts();
 			enableGpio();
-#endif
+		#elif BOARD == USBSIDPICO
+			int rc = gpioSetup();
+			// printf("rc: %d\r\n", rc);
+		#endif
 			return 0;
 		}
 		else if (!strcmp(argv[param_count], "-stop")) // TODO: FIX AND FINISH
 		{
 			printf("Stopping the device\n");
-#if BOARD == FTDI
+		#if BOARD == FTDI
 			gpioInitPorts();
-#endif
+		#endif
 			gpioStop();
 
 			return 0;
 		}
-		else if (!strcmp(argv[param_count], "-r") || !strcmp(argv[param_count], "--read"))
+		else if (!strcmp(argv[param_count], "-r") || !strcmp(argv[param_count], "--read")) // TODO: FIX AND FINISH
 		{
-
-			if (argc != 3)
-			{
+			if (argc != 3) {
 				printf("Error, usage: -r FFFF \n");
 				return 1;
 			}
 
 			DBG("READ Decimal: %ld | Hex: 0x%04lx\n", strtol(argv[2], NULL, 16), strtol(argv[2], NULL, 16));
 
-#if BOARD == FTDI
+			#if BOARD == FTDI
 			gpioInitPorts();	 // Init the USB port
 			gpioWrite(RW, HIGH); // reading requires ReadWrite to be HIGH
-#endif
+			#endif
 
 			SingleRead(strtol(argv[2], NULL, 16));
 
 			return 0;
 		}
-		else if (!strcmp(argv[param_count], "-w") || !strcmp(argv[param_count], "--write"))
+		else if (!strcmp(argv[param_count], "-w") || !strcmp(argv[param_count], "--write")) // TODO: FIX AND FINISH
 		{
-
-			if (argc != 4)
-			{
+			if (argc != 4) {
 				printf("Error, usage: -w FFFF FFFF \n");
 				return 1;
 			}
 
 			DBG("WRITE Decimal 1: %ld | Hex 1: 0x%04lx | Decimal 2: %ld | Hex 2: 0x%04lx\n", strtol(argv[2], NULL, 16), strtol(argv[2], NULL, 16), strtol(argv[3], NULL, 16), strtol(argv[3], NULL, 16));
 
-#if BOARD == FTDI
+			#if BOARD == FTDI
 			gpioInitPorts();	// Init the USB port
 			gpioWrite(RW, LOW); // writing requires ReadWrite to be LOW
-#endif
+			#endif
 
-			TestWrite(strtol(argv[2], NULL, 16), strtol(argv[3], NULL, 16));
+			SingleWrite(strtol(argv[2], NULL, 16), strtol(argv[3], NULL, 16));
 
 			return 0;
 		}
@@ -850,10 +892,12 @@ int main(int argc, char *argv[])
 		else if (!strcmp(argv[param_count], "-V") || !strcmp(argv[param_count], "--version"))
 		{
 			cout << endl;
-			cout << "SidBerry 4.0 - (May - 2024)" << endl;
-			cout << "MOS SID (MOS6581/8580) Player for RaspberryPI, AriettaG25, FTDI ft2232h and others Linux-based systems with GPIO ports" << endl;
+			cout << "SidBerry 4.1 - (June - 2024)" << endl;
+			cout << "MOS SID (MOS6581/8580) and clones player" << endl;
+			cout << "Supports: USBSID-Pico, RaspberryPI, AriettaG25, FTDI ft2232h and other Linux-based systems with GPIO ports" << endl;
 			cout << "Hardware for RaspberryPI  : Gianluca Ghettini, Thoroide " << endl;
 			cout << "Hardware for AriettaG25   : Alessio Lombardo " << endl;
+			cout << "Hardware for USBSID-Pico  : LouD " << endl;
 			cout << "Hardware for FTDI ft2233h : LouD " << endl;
 			cout << "Low-level interface       : Gianluca Ghettini, Alessio Lombardo " << endl;
 			cout << "MOS6502 Emulator          : Gianluca Ghettini" << endl;
@@ -874,19 +918,19 @@ int main(int argc, char *argv[])
 			cout << "Options: " << endl;
 			cout << " -s,  --song          : Set Sub-Song number (default depends on the Sid File) " << endl;
 			cout << " -v,  --verbose       : Verbose mode (show SID registers content) " << endl;
+			cout << " -t,  --trace         : Trace mode (prints some additional trace logging) " << endl;
 			cout << " -V,  --version       : Show version and other informations " << endl;
 			cout << " -h,  --help          : Show this help message " << endl;
 			cout << " ------------------------------------------------------------------------------------------ " << endl;
 			cout << " Experimental features: " << endl;
-			cout << " -e,  --experimental  : Experimental mode (uses both calculated clockspeed and refreshrate) " << endl;
-			cout << " -ec, --exclock       : Experimental plays SID with the defined clockspeed (PAL/NTSC) " << endl;
-			cout << " -er, --exrefresh     : Experimental plays SID with the defined refreshrate (50Hz/60Hz) " << endl;
-			cout << " -cc, --customclock   : Experimental function to manually define the clockspeed " << endl;
-			cout << " -ch, --customhertz   : Experimental function to manually define the refreshrate (Hz) by ms " << endl;
-			cout << " -rr, --realreads     : Reads the datapins when a SID needs to (unfinished) " << endl;
-			cout << " -t,  --trace         : Trace mode (prints some additional trace logging) " << endl;
+			cout << " -clc, --calclock     : Disable calculated play SID with the calculated clockspeed (PAL/NTSC) " << endl;
+			cout << " -clh, --calhertz     : Disable calculated play SID with the calculated refreshrate (50Hz/60Hz) " << endl;
+			cout << " -cl,  --calculated   : Disable calculated for both calculated clockspeed and refreshrate " << endl;
+			cout << " -cc,  --customclock  : Manually define the clockspeed, requires -clc " << endl;
+			cout << " -ch,  --customhertz  : Manually define the refreshrate (Hz) by ms, requires -clh " << endl;
+			cout << " -rr,  --realreads    : Reads the datapins when a SID needs to (unfinished, defaults to true for USBSID-Pico) " << endl;
 			cout << " ------------------------------------------------------------------------------------------ " << endl;
-			cout << " Features for reading and writing single addresses: " << endl;
+			cout << " Features for reading and writing single addresses (unfinished): " << endl;
 			cout << " -start               : Inits the usb and ports (FTDI) for reading and writing " << endl;
 			cout << " -stop                : Stops the usb and ports (FTDI) for reading and writing " << endl;
 			cout << " -r,  --read          : Read a register (prints content of a register) " << endl;
@@ -924,10 +968,21 @@ int main(int argc, char *argv[])
 	int sidflags = sid.GetSidFlags();
 	uint32_t sidspeed = sid.GetSongSpeed(song_number); // + 1);
 	int curr_sidspeed = sidspeed & (1 << song_number); // ? 1 : 0;  // 1 ~ 60Hz, 2 ~ 50Hz
-	int ct = sid.GetChipType();
+	int ct = sid.GetChipType(1);
 	int cs = sid.GetClockSpeed();
-	int clock_speed = exclock == true ? clockSpeed[cs] : custom_clock > 0 ? custom_clock : CLOCK_DEFAULT;
-	int refresh_rate = exrefresh == true ? refreshRate[cs] : custom_hertz > 0 ? custom_hertz : HERTZ_DEFAULT;
+	int sv = sid.GetSidVersion();
+	int clock_speed =
+		calculatedclock == true
+		? clockSpeed[cs]
+			: custom_clock > 0
+			? custom_clock
+				: CLOCK_DEFAULT;
+	int refresh_rate =
+		calculatedhz == true
+		? refreshRate[cs]
+			: custom_hertz > 0
+			? custom_hertz
+				: HERTZ_DEFAULT;
 
 	cout << "\n< Sid Info >" << endl;
 	cout << "---------------------------------------------" << endl;
@@ -936,13 +991,25 @@ int main(int argc, char *argv[])
 	cout << "Release & (C)      : " << sid.GetCopyrightInfo() << endl;
 	cout << "---------------------------------------------" << endl;
 	cout << "SID Type           : " << sid.GetSidType() << endl;
-	cout << "SID Format version : " << dec << sid.GetSidVersion() << endl;
+	cout << "SID Format version : " << dec << sv << endl;
 	cout << "---------------------------------------------" << endl;
 	cout << "SID Flags          : 0x" << hex << sidflags << " 0b" << bitset<8>{sidflags} << endl;
 	cout << "Chip Type          : " << chiptype[ct] << endl;
+	if (sv == 3 || sv == 4)
+		cout << "Chip Type 2        : " << chiptype[sid.GetChipType(2)] << endl;
+	if (sv == 4)
+		cout << "Chip Type 3        : " << chiptype[sid.GetChipType(3)] << endl;
 	cout << "Clock Type         : " << hex << clockspeed[cs] << endl;
 	cout << "Clock Speed        : " << dec << clock_speed << endl;
 	cout << "Refresh Rate       : " << dec << refresh_rate << endl;
+	if (sv == 3 || sv == 4 || sv == 78) {
+		cout << "---------------------------------------------" << endl;
+		cout << "SID 2 $addr        : $d" << hex << sid.GetSIDaddr(2) << "0" << endl;
+		if (sv == 4 || sv == 78)
+			cout << "SID 3 $addr        : $d" << hex << sid.GetSIDaddr(3) << "0" << endl;
+		if (sv == 78)
+			cout << "SID 4 $addr        : $d" << hex << sid.GetSIDaddr(4) << "0" << endl;
+	}
 	cout << "---------------------------------------------" << endl;
 	cout << "Data Offset        : $" << setfill('0') << setw(4) << hex << sid.GetDataOffset() << endl;
 	cout << "Image length       : $" << hex << sid.GetInitAddress() << " - $" << hex << (sid.GetInitAddress() - 1) + sid.GetDataLength() << endl;
@@ -950,10 +1017,17 @@ int main(int argc, char *argv[])
 	cout << "Init Address       : $" << hex << sid.GetInitAddress() << endl;
 	cout << "Play Address       : $" << hex << sid.GetPlayAddress() << endl;
 	cout << "---------------------------------------------" << endl;
-	// cout << "Song Speed         : $" << hex << sid.GetSongSpeed(song_number + 1) << endl;
-	cout << "Song Speed         : $" << hex << curr_sidspeed << endl;
-	cout << "Song Speeds        : $0x" << hex << sidflags << " 0b" << bitset<32>{sidflags} << endl;  // BUG: Always 0x14 !?
+	cout << "Song Speed(s)      : $" << hex << curr_sidspeed << " $0x" << hex << sidflags << " 0b" << bitset<32>{sidflags} << endl;  // BUG: Always 0x24 !?
 	cout << "Selected Sub-Song  : " << dec << song_number + 1 << " / " << dec << sid.GetNumOfSongs() << endl;
+
+	sidcount =
+		sv == 3
+		? 2
+			: sv == 4
+			? 3
+				: sv == 78
+				? 4
+					: 1;
 
 	sidPlaySetup();  // Setup gpios for playing SID files
 
@@ -963,6 +1037,11 @@ int main(int argc, char *argv[])
 	int time_unit = 0;
 	int sec = 0;
 	int min = 0;
+
+	// bool paused = true;
+	bool paused = false;
+	bool exit = false;
+	uint8_t mode_vol_reg = volume;
 
 	load_sid(cpu, sid, song_number);
 
@@ -983,9 +1062,6 @@ int main(int argc, char *argv[])
 	printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", song_number + 1, sid.GetNumOfSongs(), min, sec, volume);
 	fflush(stdout);
 
-	bool paused = false;
-	bool exit = false;
-	uint8_t mode_vol_reg = 0;
 
 	// main loop, play song
 	while (!exit || !stop)

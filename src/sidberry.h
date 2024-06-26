@@ -74,14 +74,45 @@ extern int volume;
 extern int clock_speed;
 extern int refresh_rate;
 extern uint8_t memory[65536];
-// extern uint16_t phyaddr;
 extern bool verbose;
 extern bool trace;
 extern bool calculatedclock;
-extern bool calculatedrefresh;
+extern bool calculatedhz;
 extern bool real_read;
 extern volatile sig_atomic_t stop;
 
+/* function to track ctrl+c
+   sigint excerpt from https://stackoverflow.com/questions/26965508/infinite-while-loop-and-control-c#26965628 */
 void inthand(int signum);
+
+/* Handler for a clean exit */
+void exitPlayer(void);
+
+/* Set up gpio pins for single read or write actions */
+void enableGpio(void);
+/* Do a single write from the command line to $addr with $byte */
+void SingleWrite(uint16_t addr, uint8_t byte);
+/* Do a single read from the command line from $addr */
+uint8_t SingleRead(uint16_t addr);
+
+/* Main address writing function */
+void MemWrite(uint16_t addr, uint8_t byte);
+/* Main address reading function */
+uint8_t MemRead(uint16_t addr);
+
+/* Load SID file into memory */
+int load_sid(mos6502 cpu, SidFile sid, int song_number);
+/* Get key pressed without echo */
+int getch_noecho_special_char(void);
+/* Player state handler */
+void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused, bool *exit, uint8_t *mode_vol_reg, int *song_number, int *sec, int *min);
+/* Player setup */
+void sidPlaySetup(void);
+
+/* Deprecated test function */
+void TestWrite(uint16_t addr, uint8_t byte);
+/* Deprecated test function */
+void TestLoop(void);
+
 
 #endif // SIDBERRY_H
