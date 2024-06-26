@@ -1,9 +1,8 @@
 ## SidBerry ##
 ### Music player for MOS SID chip (6581/8580), [SIDKick-pico](https://github.com/frntc/SIDKick-pico) or SwinSID like replacements using USB or GPIO enabled devices ###
 Such devices include [USBSID-Pico](https://github.com/LouDnl/USBSID-Pico), [FTDI ft2232h board](https://github.com/arm8686/FT2232HL-Board), RaspberryPi, AriettaG25 and more if you want you create the interface code.
-#### Original Author and repo of SiBerry ####
+#### Original Author and repo of SidBerry ####
 [@gianlucag](https://github.com/gianlucag) ~ [SidBerry](https://github.com/gianlucag/SidBerry)
-
 
 ## USBSID-Pico & FTDIBerry ##
 This repo contains an adaptation of SidBerry that includes playing SID files over USB on a Linux PC (Windows if you compile on Windows - no support).
@@ -19,13 +18,10 @@ Examples:
 make
 # Make default binary with additional debug logging
 make debug
-
 # Make binaries for usbsidpico, ftdi, raspberrypi & arietta25g
 make all
-
 # Make binaries for usbsidpico & ftdi
 make usb
-
 # For the USBSID-Pico with libusb installed, compile with:
 make usbsidpico
 # For the FTDI USB board with "libftdi(-dev) and libftdi1(-dev)" installed, compile with:
@@ -37,7 +33,6 @@ make raspberrypi
 # For other cards, after having appropriately modified "gpioInterface.cpp" and "gpioInterface.h", compile with:
 make custom
 ```
-
 
 # Translation of the original [README](README-original.md) by [@gianlucag](https://github.com/gianlucag/SidBerry)
 
