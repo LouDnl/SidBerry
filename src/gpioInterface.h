@@ -164,23 +164,23 @@ void resetSID(void);
 #endif // BOARD
 
 /*
- *	Function to SETUP the GPIO ports. Map this function to the equivalent GPIO library function or write it.
+ * Function to SETUP the GPIO ports. Map this function to the equivalent GPIO library function or write it.
  */
 int gpioSetup();
 /*
- *	Function to break down the GPIO ports.
+ * Function to break down the GPIO ports.
  */
 int gpioStop();
 /*
- *	Function to set the MODE of a GPIO port. Map this function to the equivalent GPIO library function or write it.
+ * Function to set the MODE of a GPIO port. Map this function to the equivalent GPIO library function or write it.
  */
 void gpioMode(int pin, int mode);
 /*
- *	Function to READ a pin state from a GPIO port.
+ * Function to READ a pin state from a GPIO port.
  */
 int gpioRead(int pin);
 /*
- *	Function to WRITE to a GPIO port. Map this function to the equivalent GPIO library function or write it.
+ * Function to WRITE to a GPIO port. Map this function to the equivalent GPIO library function or write it.
  */
 void gpioWrite(int pin, int level);
 

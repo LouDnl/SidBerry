@@ -63,7 +63,7 @@ static const enum refresh_rates refreshRate[] = {DEFAULT, EU, US, GLOBAL};
 
 /*
     printf("enum index %i\n", (clock_speed)cs); // index
-    printf("enum value %i\n", clockSpeed[cs]);	// value
+    printf("enum value %i\n", clockSpeed[cs]);  // value
 */
 extern timeval t1, t2;
 extern long int elaps;
