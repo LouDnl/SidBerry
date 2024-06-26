@@ -30,7 +30,7 @@
 #define PRINTF_BYTE_TO_BINARY_INT64(i) \
     PRINTF_BYTE_TO_BINARY_INT32((i) >> 32), PRINTF_BYTE_TO_BINARY_INT32(i)
 
-#if defined(DEBUG_FTDI)
+#if defined(DEBUG_SIDBERRY)
 #define DBG(...) printf(__VA_ARGS__)
 #else
 #define DBG(...)

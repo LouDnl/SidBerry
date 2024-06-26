@@ -8,13 +8,18 @@
 #ifndef GPIOINTERFACE_H
 #define GPIOINTERFACE_H
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
-#define FTDI 0
-#define RASPBERRYPI 1
-#define ARIETTAG25 2
-#define CUSTOM 3
+#include "macros.h"
+
+#define USBSIDPICO 0
+#define FTDI 1
+#define RASPBERRYPI 2
+#define ARIETTAG25 3
+#define CUSTOM 4
 
 #if BOARD == RASPBERRYPI // Raspberry Pi
 extern "C"
@@ -89,6 +94,42 @@ int gpioInitPorts();  // FTDI Only
 int gpioClosePorts(); // FTDI Only
 int gpioEnableBB();   // FTDI Only
 int gpioDisableBB();  // FTDI Only
+
+#elif BOARD == USBSIDPICO
+
+#include <errno.h>
+#include <libusb.h>
+
+// REQUIRED ~ init all to 0
+#define HIGH 1
+#define LOW 0
+#define OUTPUT 1
+#define INPUT 0
+
+#define RES 0
+#define RW 0
+#define CS 0
+
+#define A0 0
+#define A1 0
+#define A2 0
+#define A3 0
+#define A4 0
+
+#define D0 0
+#define D1 0
+#define D2 0
+#define D3 0
+#define D4 0
+#define D5 0
+#define D6 0
+#define D7 0
+
+/* USBSID-Pico specific functions */
+void sidWrite(unsigned char *buff);
+unsigned char sidRead(unsigned char *writebuff, unsigned char *buff);
+void pauseSID(void);
+void resetSID(void);
 
 #elif BOARD == CUSTOM // Custom Board
 // 1) GPIO library (if needed)
