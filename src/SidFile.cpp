@@ -24,6 +24,11 @@ uint16_t SidFile::Read16(const uint8_t *p, int offset)
 	return (p[offset] << 8) | p[offset + 1];
 }
 
+uint8_t SidFile::Read8(const uint8_t *p, int offset)
+{
+	return p[offset];
+}
+
 uint32_t SidFile::Read32(const uint8_t *p, int offset)
 {
 	return (p[offset] << 24) | (p[offset + 1] << 16) | (p[offset + 2] << 8) | p[offset + 3];
@@ -33,7 +38,8 @@ bool SidFile::IsPSIDHeader(const uint8_t *p)
 {
 	uint32_t id = Read32(p, SIDFILE_PSID_ID);
 	uint16_t version = Read16(p, SIDFILE_PSID_VERSION);
-	return id == 0x50534944 && (version == 1 || version == 2);
+	/* Add v3 Dual SID, v4 Triple SID, v5 Quad SID file support */
+	return id == 0x50534944 && (version >= 1 || version <= 4);
 }
 
 int SidFile::Parse(string file)
@@ -120,7 +126,7 @@ int SidFile::Parse(string file)
 	// - Bit 1 specifies whether the tune is PlaySID specific, e.g. uses PlaySID
 	// samples (psidSpecific):
 	// 0 = C64 compatible,
-	// 1 = PlaySID specific (PSID v2NG)
+	// 1 = PlaySID specific (PSID v2NG, v3, v4)
 	// 1 = C64 BASIC flag (RSID)
 
 	// x = x & 2;
@@ -132,7 +138,7 @@ int SidFile::Parse(string file)
 	// 11 = PAL and NTSC.
 
 	// clockSpeed = (reverse(sidFlags) >> 5) & 3; // 0b00001100 bits 2 & 3 ~ but from reverse bits
-	clockSpeed = (sidFlags >> 2) & 3; // 0b00001100 bits 2 & 3 ~ but from reverse bits
+	clockSpeed = (sidFlags >> 2) & 3; // 0b00001100 bits 2 & 3
 
 	// - Bits 4-5 specify the SID version (sidModel):
 	// 00 = Unknown,
@@ -141,7 +147,31 @@ int SidFile::Parse(string file)
 	// 11 = MOS6581 and MOS8580.
 
 	// chipType = (reverse(sidFlags) >> 3) & 3; // 0b00110000 bits 4 & 5 ~ but from reverse bits
-	chipType = (sidFlags >> 4) & 3; // 0b00110000 bits 4 & 5 ~ but from reverse bits
+	chipType = (sidFlags >> 4) & 3; // 0b00110000 bits 4 & 5
+
+	// This is a v2NG specific field.
+	// - Bits 6-7 specify the SID version (sidModel) of the second SID:
+	// 00 = Unknown, <- then same as SID 1
+	// 01 = MOS6581,
+	// 10 = MOS8580,
+	// 11 = MOS6581 and MOS8580.
+	chipType2 = (sidFlags >> 6) & 3; // 0b00110000 bits 4 & 5
+
+	// This is a v3 specific field.
+	// - Bits 8-9 specify the SID version (sidModel) of the third SID:
+	// 00 = Unknown, <- then same as SID 1
+	// 01 = MOS6581,
+	// 10 = MOS8580,
+	// 11 = MOS6581 and MOS8580.
+	chipType3 = (sidFlags >> 8) & 3; // 0b00110000 bits 4 & 5
+
+	startPage = Read8(header, SIDFILE_PSID_STARTPAGE);
+	pageLength = Read8(header, SIDFILE_PSID_PAGELENGTH);
+	if (sidVersion == 3 || sidVersion == 4 || sidVersion == 78) {
+		secondSID = Read8(header, SIDFILE_PSID_SECONDSID);
+		thirdSID = Read8(header, SIDFILE_PSID_THIRDSID);
+		fourthSID = Read8(header, SIDFILE_PSID_FOURTHSID);
+	}
 
 	fclose(f);
 
@@ -204,9 +234,14 @@ uint16_t SidFile::GetSidFlags()
 	return sidFlags;
 }
 
-uint16_t SidFile::GetChipType()
+uint16_t SidFile::GetChipType(int n)
 {
-	return chipType;
+	return n == 3 ? chipType3 : n == 2 ? chipType2 : chipType;
+}
+
+uint16_t SidFile::GetSIDaddr(int n)
+{
+	return n == 2 ? secondSID : n == 3 ? thirdSID : fourthSID;
 }
 
 uint16_t SidFile::GetClockSpeed()
