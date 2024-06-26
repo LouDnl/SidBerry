@@ -1,32 +1,42 @@
 ## SidBerry ##
-### Music player for SID 6581 chips using GPIO enabled devices ###
-Such GPIO devices include RaspberryPi, AriettaG25, FTDI ft2232h and more if you want you create the interface code.
+### Music player for MOS SID chip (6581/8580), [SIDKick-pico](https://github.com/frntc/SIDKick-pico) or SwinSID like replacements using USB or GPIO enabled devices ###
+Such devices include [USBSID-Pico](https://github.com/LouDnl/USBSID-Pico), [FTDI ft2232h board](https://github.com/arm8686/FT2232HL-Board), RaspberryPi, AriettaG25 and more if you want you create the interface code.
 #### Original Author and repo of SiBerry ####
 [@gianlucag](https://github.com/gianlucag) ~ [SidBerry](https://github.com/gianlucag/SidBerry)
 
-## FTDIBerry ##
-This repo contains an adaptation of SidBerry that includes playing SID files over USB on a Linux PC (Windows if you compile on Windows - no support)
 
+## USBSID-Pico & FTDIBerry ##
+This repo contains an adaptation of SidBerry that includes playing SID files over USB on a Linux PC (Windows if you compile on Windows - no support).
+
+### Dependencies for building
+**USBSID-Pico** requires libusb \
+**FTDIBerry** requires libftdi and libftdi1
 
 ## Building SidBerry ##
 Examples:
 ```shell
-# Default make will compile for FTDI with debug symbols enabled
+# Default make will compile for USBSID-Pico with debug symbols enabled
 make
-make all
 # Make default binary with additional debug logging
 make debug
 
-# For the FTDI USB board with the "libftdi(-dev) and libftdi1(-dev)" libraries already installed, compile with:
+# Make binaries for usbsidpico, ftdi, raspberrypi & arietta25g
+make all
+
+# Make binaries for usbsidpico & ftdi
+make usb
+
+# For the USBSID-Pico with libusb installed, compile with:
+make usbsidpico
+# For the FTDI USB board with "libftdi(-dev) and libftdi1(-dev)" installed, compile with:
 make ftdi
-# For the AriettaG25 board with the "wiringSAM" library already installed, compile with:
+# For the AriettaG25 board with "wiringSAM" installed, compile with:
 make arietta25g
-# For the RaspberryPI board with the "wiringPi" library already installed, compile with:
+# For the RaspberryPI board with "wiringPi" installed, compile with:
 make raspberrypi
 # For other cards, after having appropriately modified "gpioInterface.cpp" and "gpioInterface.h", compile with:
 make custom
 ```
-
 
 
 # Translation of the original [README](README-original.md) by [@gianlucag](https://github.com/gianlucag/SidBerry)
