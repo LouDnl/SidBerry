@@ -21,11 +21,8 @@ using namespace std;
 #include <termios.h>
 #include <stdio.h>
 
-#if defined(DEBUG_SIDBERRY)
-#define DBG(...) printf(__VA_ARGS__)
-#else
-#define DBG(...)
-#endif
+#include "gpioInterface.h"
+#include "macros.h"
 
 // Clock cycles for the MOS6502
 #define CLOCK_CYCLES 100000
@@ -40,6 +37,9 @@ using namespace std;
 #define HERTZ_DEFAULT 20000  // 50Hz ~ 20000 == 20us
 #define HERTZ_50      19950  // 50Hz ~ 20000 == 20us / 50.125Hz ~ 19.950124688279us exact
 #define HERTZ_60      16715  // 60Hz ~ 16667 == 16.67us / 59.826Hz ~ 16.715140574332 exact
+
+// Default addresses
+#define VOL_ADDR 0xD418
 
 enum clock_speeds
 {
@@ -67,6 +67,7 @@ static const enum refresh_rates refreshRate[] = {DEFAULT, EU, US, GLOBAL};
 */
 extern timeval t1, t2;
 extern long int elaps;
+extern int sidcount;
 extern int custom_clock;
 extern int custom_hertz;
 extern int volume;
@@ -76,8 +77,8 @@ extern uint8_t memory[65536];
 // extern uint16_t phyaddr;
 extern bool verbose;
 extern bool trace;
-extern bool exclock;
-extern bool exrefresh;
+extern bool calculatedclock;
+extern bool calculatedrefresh;
 extern bool real_read;
 extern volatile sig_atomic_t stop;
 
