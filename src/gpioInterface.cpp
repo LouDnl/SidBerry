@@ -145,13 +145,13 @@ void gpioMode(int pin, int mode)
 
 #elif BOARD == USBSIDPICO
 
-#define VENDOR_ID      0x5553
-#define PRODUCT_ID     0x4001
+#define VENDOR_ID      0xcafe
+#define PRODUCT_ID     0x4011
 #define ACM_CTRL_DTR   0x01
 #define ACM_CTRL_RTS   0x02
 static struct libusb_device_handle *devh = NULL;
-static int ep_in_addr = 0x02;
-static int ep_out_addr  = 0x82;
+static int ep_in_addr  = 0x82;
+static int ep_out_addr = 0x02;
 
 int gpioSetup()
 {
@@ -233,7 +233,7 @@ void sidWrite(unsigned char *buff)
 {
     int size = sizeof(buff);
     int actual_length;
-    if (libusb_bulk_transfer(devh, ep_in_addr, buff, size,
+    if (libusb_bulk_transfer(devh, ep_out_addr, buff, size,
                             &actual_length, 0) < 0)
     {
         fprintf(stderr, "Error while sending char\n");
@@ -245,7 +245,7 @@ unsigned char sidRead(unsigned char *writebuff, unsigned char *buff)
     sidWrite(writebuff);
     unsigned char readbuffer[4];
     int rc, actual_length;
-    rc = libusb_bulk_transfer(devh, ep_out_addr, readbuffer, sizeof(readbuffer), &actual_length, 1000);
+    rc = libusb_bulk_transfer(devh, ep_in_addr, readbuffer, sizeof(readbuffer), &actual_length, 1000);
     if (rc == LIBUSB_ERROR_TIMEOUT) {
         fprintf(stderr, "Timeout (%d)\n", actual_length);
         return -1;
@@ -258,13 +258,13 @@ unsigned char sidRead(unsigned char *writebuff, unsigned char *buff)
 
 void pauseSID(void)
 {
-    unsigned char buff[4] = {0x80, 0x0, 0x0, 0x0};
+    unsigned char buff[4] = {0x2, 0x0, 0x0, 0x0};
     sidWrite(buff);
 }
 
 void resetSID(void)
 {
-    unsigned char buff[4] = {0x40, 0x0, 0x0, 0x0};
+    unsigned char buff[4] = {0x3, 0x0, 0x0, 0x0};
     sidWrite(buff);
 }
 
@@ -272,9 +272,16 @@ int gpioStop()
 {
     unsigned char buff[4] = {0x0, 0x0, 0x0, 0x0};
     sidWrite(buff);
-    if (devh)
-            libusb_close(devh);
+    for (int if_num = 0; if_num < 2; if_num++) {
+        libusb_release_interface(devh, if_num);
+        if (libusb_kernel_driver_active(devh, if_num)) {
+            libusb_detach_kernel_driver(devh, if_num);
+        }
+    }
+    libusb_close(devh);
     libusb_exit(NULL);
+    devh = NULL;
+    fprintf(stdout, "Linux usbsid: closed.");
     return 0;
 }
 

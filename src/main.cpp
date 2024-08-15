@@ -293,7 +293,7 @@ uint8_t SingleRead(uint16_t addr)  // NOTICE: USB devices only
         uint16_t phyaddr = addr & 0xFF;
         unsigned char result[1];
         unsigned char buff[4];  /* 4 Byte buffer */
-        buff[0] = 0x0;  /* Read */
+        buff[0] = 1;  /* Read */
         buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0x4D */
         buff[2] = phyaddr;  /* Address Byte 2 ~ 0x1C */
         buff[3] = 0x0;  /* Data bus value */
@@ -346,7 +346,7 @@ void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
 
         #if BOARD == USBSIDPICO
         unsigned char buff[4];  /* 4 Byte buffer */
-        buff[0] = 0x10;         /* Write */
+        buff[0] = 0;         /* Write */
         buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0xD4 */
         buff[2] = phyaddr;      /* Address Byte 2 ~ 0x1C */
         buff[3] = byte;         /* Data bus value */
@@ -468,7 +468,7 @@ uint8_t MemRead(uint16_t addr)
                 #if BOARD == USBSIDPICO
                 /* USBSID code */
                 unsigned char buff[4];  /* 4 Byte buffer */
-                buff[0] = 0x0;          /* Read */
+                buff[0] = 1;          /* Read */
                 buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0xD4 */
                 buff[2] = phyaddr;      /* Address Byte 2 ~ 0x1C */
                 buff[3] = 0x0;          /* Data bus value */
