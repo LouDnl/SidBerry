@@ -223,9 +223,7 @@ int gpioSetup()
 
     return rc;
 out:
-    if (devh)
-        libusb_close(devh);
-    libusb_exit(NULL);
+    gpioStop();
     return rc;
 }
 
@@ -270,16 +268,18 @@ void resetSID(void)
 
 int gpioStop()
 {
-    unsigned char buff[4] = {0x0, 0x0, 0x0, 0x0};
-    sidWrite(buff);
-    for (int if_num = 0; if_num < 2; if_num++) {
-        libusb_release_interface(devh, if_num);
-        if (libusb_kernel_driver_active(devh, if_num)) {
+    if (devh != NULL) {
+        unsigned char buff[4] = {0x0, 0x0, 0x0, 0x0};
+        sidWrite(buff);
+        for (int if_num = 0; if_num < 2; if_num++) {
+            libusb_release_interface(devh, if_num);
+            if (libusb_kernel_driver_active(devh, if_num)) {
             libusb_detach_kernel_driver(devh, if_num);
+            }
         }
+        libusb_close(devh);
+        libusb_exit(NULL);
     }
-    libusb_close(devh);
-    libusb_exit(NULL);
     devh = NULL;
     fprintf(stdout, "Linux usbsid: closed.");
     return 0;
