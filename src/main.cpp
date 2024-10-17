@@ -22,18 +22,14 @@ bool calculatedhz = false;       // init calculated refresh boolean
 volatile sig_atomic_t stop;    // init variable for ctrl+c
 #if BOARD == USBSIDPICO
 bool real_read = true;         // use actual pin reading when USBSID-Pico
+timespec t3, t4, t5, t6, tt4, tt6;
+uint32_t wdiff, wwdiff, rdiff, rrdiff = 0;
 #else
 bool real_read = false;        // use actual pin reading when true
 #endif
 timeval t1, t2;
 long int elaps;
 
-
-void inthand(int signum)
-{
-    exitPlayer();
-    stop = 1;
-}
 
 void exitPlayer(void)  // TODO: Add wait for current USB transfer to finish for clean exit
 {
@@ -44,11 +40,18 @@ void exitPlayer(void)  // TODO: Add wait for current USB transfer to finish for 
         }
     }
     #if BOARD == USBSIDPICO
-    resetSID();
+    usbSIDPause();
+    usbSIDReset();
     #else
     gpioWrite(RES, LOW);  // make sure any sound stops by resetting the sid
     #endif
     gpioStop();
+}
+
+void inthand(int signum)
+{
+    stop = 1;
+    exitPlayer();
 }
 
 void enableGpio(void)
@@ -291,22 +294,28 @@ uint8_t SingleRead(uint16_t addr)  // NOTICE: USB devices only
         #if BOARD == USBSIDPICO
         /* USBSID code */
         uint16_t phyaddr = addr & 0xFF;
-        unsigned char result[1];
-        unsigned char buff[4];  /* 4 Byte buffer */
-        buff[0] = 1;  /* Read */
-        buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0x4D */
-        buff[2] = phyaddr;  /* Address Byte 2 ~ 0x1C */
-        buff[3] = 0x0;  /* Data bus value */
-        sidRead(buff, result);
+        unsigned char buff[4] = { 0x1, (addr >> 8), phyaddr, 0x0 };  /* 4 Byte buffer */
+        usbSIDRead_toBuff(buff);
         if (trace == true && verbose != true) printf("Read result: 0x%02x 0b" PRINTF_BINARY_PATTERN_INT8 " from addr: 0x%04x \r\n", result[0], PRINTF_BYTE_TO_BINARY_INT8(result[0]), addr);
+        memory[addr] = result[0];
         #endif
-
     }
     return memory[addr];
 }
 
+long long timeInMilliseconds(void)
+{
+    /* https://stackoverflow.com/a/44896326 */
+    struct timeval tv;
+
+    gettimeofday(&tv,NULL);
+    /* return (((long long)tv.tv_sec)*1000)+(tv.tv_usec/1000); */  // Milliseconds
+    return (long long)tv.tv_sec+tv.tv_usec;  // Microseconds
+}
+
 void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
 {
+    /* printf("[W]$%04x $%02x\r\n", addr, byte); */
     if (addr >= 0xD400 && addr <= 0xDFFF)
     {
         // access to SID chip
@@ -317,10 +326,10 @@ void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
         {
             // NOTE: If you use a slow connection to tty device, the printf function may affect the playback speed
             printf("Voice 1: $%02X%02X %02X%02X %02X %02X %02X | Voice 2: $%02X%02X %02X%02X %02X %02X %02X | Voice 3: $%02X%02X %02X%02X %02X %02X %02X | Filter: %02X %02X %02X Vol: %02X \n",
-                   memory[0xD400], memory[0xD401], memory[0xD402], memory[0xD403], memory[0xD404], memory[0xD405], memory[0xD406],
-                   memory[0xD407], memory[0xD408], memory[0xD409], memory[0xD40A], memory[0xD40B], memory[0xD40C], memory[0xD40D],
-                   memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414],
-                   memory[0xD415], memory[0xD416], memory[0xD417], memory[0xD418]);
+                    memory[0xD400], memory[0xD401], memory[0xD402], memory[0xD403], memory[0xD404], memory[0xD405], memory[0xD406],
+                    memory[0xD407], memory[0xD408], memory[0xD409], memory[0xD40A], memory[0xD40B], memory[0xD40C], memory[0xD40D],
+                    memory[0xD40E], memory[0xD40F], memory[0xD410], memory[0xD411], memory[0xD412], memory[0xD413], memory[0xD414],
+                    memory[0xD415], memory[0xD416], memory[0xD417], memory[0xD418]);
         }
 
         uint16_t phyaddr = addr & 0x7F;     /* 4 SIDs max */
@@ -345,16 +354,36 @@ void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
         #endif
 
         #if BOARD == USBSIDPICO
-        unsigned char buff[4];  /* 4 Byte buffer */
-        buff[0] = 0;         /* Write */
-        buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0xD4 */
-        buff[2] = phyaddr;      /* Address Byte 2 ~ 0x1C */
-        buff[3] = byte;         /* Data bus value */
-        sidWrite(buff);
+        long long tic = timeInMilliseconds();
+        /* clock_t tic = clock(); */
+        /* if (verbose && trace) {
+            clock_gettime(CLOCK_REALTIME, &t4);
+        }; */
+        // unsigned char buff[4] = { 0x0, (addr >>8), phyaddr, byte };  /* 4 Byte buffer */
+        addr = sid_address(addr);  /* 3 Byte buffer address translation */
+        phyaddr = addr & 0xFF;
+        unsigned char buff[3] = { 0x0, phyaddr, byte };   /* 3 Byte buffer */
+        usbSIDWrite(buff);
+
         if (verbose && trace)
         {
-            printf("one memwrite ~ $addr: %04x phyrange: %02x phyaddr: %02x byte: %02x\n",
-                   addr, buff[1], phyaddr, byte);
+            /* clock_gettime(CLOCK_REALTIME, &tt4);
+            int calc, calc2;
+            wdiff = (t4.tv_sec-t3.tv_sec)*1000000000L+(t4.tv_nsec-t3.tv_nsec);
+            t3.tv_sec = t4.tv_sec;
+            t3.tv_nsec = t4.tv_nsec;
+            calc = wdiff / 1000;
+            wwdiff = (tt4.tv_nsec-t4.tv_nsec);
+            calc2 = wwdiff / 1000;
+            fprintf(stdout, "[W]@%02x [D]%02x [uS]%8d [WuS]%8d\n", phyaddr, byte, calc, calc2); */
+
+            // double time_spent = ((double)end - begin) / CLOCKS_PER_SEC;
+            // double us_spent = (time_spent / 1000) / 1000;
+            /* clock_t toc = clock(); */
+            /* fprintf(stdout, "[W]@%02x [D]%02x [uS]%.2d [S]%f\n", phyaddr, byte, (int)((double)(toc - tic) / CLOCKS_PER_SEC * 1000000), (double)(toc - tic) / CLOCKS_PER_SEC); */
+            long long toc = timeInMilliseconds();
+            fprintf(stdout, "[W]@%02x [D]%02x [uS]%3lld\n", phyaddr, byte, (toc - tic));
+
         }
         #else
 
@@ -437,7 +466,7 @@ void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
 
 uint8_t MemRead(uint16_t addr)
 {
-
+    /* printf("[R]$%04x $%02x\r\n", addr, memory[addr]); */
     if (addr >= 0xD400 && addr <= 0xDFFF) // address decoding logic
     {
         if (real_read == false)  // default
@@ -463,17 +492,38 @@ uint8_t MemRead(uint16_t addr)
             if ((addr & 0x001F) == 0x001B || (addr & 0x001F) == 0x001C)
             {
                 uint16_t phyaddr = addr & 0xFF;
-                unsigned char result[1];
+                /* unsigned char result[1]; */
 
                 #if BOARD == USBSIDPICO
                 /* USBSID code */
-                unsigned char buff[4];  /* 4 Byte buffer */
-                buff[0] = 1;          /* Read */
-                buff[1] = (addr >> 8);  /* Address Byte 1 ~ 0xD4 */
-                buff[2] = phyaddr;      /* Address Byte 2 ~ 0x1C */
-                buff[3] = 0x0;          /* Data bus value */
-                sidRead(buff, result);
-                #else
+                long long tic = timeInMilliseconds();
+                /* clock_t tic = clock(); */
+                /* if (verbose && trace) {
+                    clock_gettime(CLOCK_REALTIME, &t6);
+                } */
+                // unsigned char buff[4] = { 0x1, (addr >> 8), phyaddr, 0x0 };   /* 4 Byte buffer */
+                addr = sid_address(addr);
+                phyaddr = addr & 0xFF;
+                unsigned char buff[3] = { 0x1, phyaddr, 0x0 };   /* 3 Byte buffer */
+                usbSIDRead_toBuff(buff);
+                if (verbose && trace)
+                {
+                    /* clock_gettime(CLOCK_REALTIME, &tt6);
+                    int calc, calc2;
+                    rdiff = (t6.tv_sec-t5.tv_sec)*1000000000L+(t6.tv_nsec-t5.tv_nsec);
+                    t5.tv_sec = t6.tv_sec;
+                    t5.tv_nsec = t6.tv_nsec;
+                    calc = rdiff/1000;
+                    rrdiff = (tt6.tv_nsec-t6.tv_nsec);
+                    calc2 = rrdiff / 1000;
+                    fprintf(stdout, "[R]@%02x [D]%02x [uS]%8d [RuS]%8d\n", phyaddr, result[0], calc, calc2); */
+
+                    /* clock_t toc = clock(); */
+                    /* fprintf(stdout, "[R]@%02x [D]%02x [uS]%.2d [S]%f\n", phyaddr, result[0], (int)((double)(toc - tic) / CLOCKS_PER_SEC * 1000000), (double)(toc - tic) / CLOCKS_PER_SEC); */
+                    long long toc = timeInMilliseconds();
+                    fprintf(stdout, "[R]@%02x [D]%02x [uS]%.2lld\n", phyaddr, result[0], (toc - tic));
+                }
+            #else
                 // set address to the bus
                 if (phyaddr & 0x01)
                     gpioWrite(A0, HIGH);
@@ -522,8 +572,8 @@ int load_sid(mos6502 cpu, SidFile sid, int song_number)
 
     /* Make sure volume does not mute on play for SID1 to max sidcount */
     for (int i = 0; i < sidcount; i++) {
-        MemWrite((VOL_ADDR + (i * 0x20)), 0xE);
         memory[(VOL_ADDR + (i * 0x20))] = 0xE;
+        MemWrite((VOL_ADDR + (i * 0x20)), 0xE);
     }
 
     uint16_t load = sid.GetLoadAddress();
@@ -647,7 +697,7 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
                 MemWrite((VOL_ADDR + (i * 0x20)), 0);
             }
             #if BOARD == USBSIDPICO
-            pauseSID();
+            usbSIDPause();
             #endif
             *paused = true;
         }
@@ -1091,6 +1141,7 @@ int main(int argc, char *argv[])
         gettimeofday(&t2, NULL);
 
         // wait 1/50 sec.
+        // printf("C[%d:%d] [t1]%lu [t1u]%06lu [t2]%lu [t2u]%06lu [e]%03ld [e-]%06ld [t]%03d [c]%d [r]%d\r\n", min, sec, t1.tv_sec, t1.tv_usec, t2.tv_sec, t2.tv_usec, elaps, refresh_rate - elaps, time_unit, clock_speed, refresh_rate);
         if (t1.tv_sec == t2.tv_sec)
             elaps = t2.tv_usec - t1.tv_usec;
         else
