@@ -5,7 +5,11 @@ CC = gcc
 CXX = g++
 
 # Default build flags (empty)
-CPPFLAGS = -g3
+# CPPFLAGS = -g3 #-Wall
+# CPPFLAGS = -Ofast
+# CPPFLAGS = -O0 -ggdb3 -fno-omit-frame-pointer -DASYNC_THREADING=1
+# CPPFLAGS = -O0 -g3 -fno-omit-frame-pointer
+CPPFLAGS = -Ofast -fno-omit-frame-pointer
 CXXFLAGS =
 LDLIBS =
 
@@ -24,9 +28,11 @@ TARGET_EXEC_CUSTOM := sidberry-custom
 
 BUILD_DIR := ./build
 SRC_DIRS := ./src
-
+# -Wl,-rpath -Wl,LIBDIR
 # Default cpplibs per target
 CPPLIBUSBSIDPICO = $(shell pkg-config --cflags libusb-1.0)
+# NOTICE: REQUIRES LIBUSB 1.0.27!!
+# CPPLIBUSBSIDPICO = -I/usr/local/include/libusb-1.0
 CPPLIBFTDI = $(shell pkg-config --cflags libftdi1)
 CPPLIBRPI =
 CPPLIBARIETTA =
@@ -34,6 +40,8 @@ CPPLIBCUSTOM =
 
 # Default ldlibs per target
 LDLIBUSBSIDPICO = $(shell pkg-config --libs libusb-1.0)
+# NOTICE: REQUIRES LIBUSB 1.0.27!!
+# LDLIBUSBSIDPICO = -Wl,-rpath -Wl,/usr/local/lib -L/usr/local/lib -lusb-1.0
 LDLIBFTDI = $(shell pkg-config --libs libftdi1)
 LDLIBRPI = -lwiringPi
 LDLIBARRIETTA = -lwiringSam

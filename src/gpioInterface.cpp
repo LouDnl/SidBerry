@@ -5,7 +5,7 @@
 //============================================================================
 
 #include "gpioInterface.h"
-
+// uint8_t memory[65536];         // init 64K ram
 // #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 #if BOARD == RASPBERRYPI // Raspberry Pi (GPIO library: <wiringPi.h>)
@@ -145,157 +145,35 @@ void gpioMode(int pin, int mode)
 
 #elif BOARD == USBSIDPICO
 
-#define VENDOR_ID      0xcafe
-#define PRODUCT_ID     0x4011
-#define ACM_CTRL_DTR   0x01
-#define ACM_CTRL_RTS   0x02
-static struct libusb_device_handle *devh = NULL;
-static int ep_in_addr  = 0x82;
-static int ep_out_addr = 0x02;
 
 int gpioSetup()
 {
-    int rc;
-    /* - set line encoding: here 9600 8N1
-     * 9600 = 0x2580 -> 0x80, 0x25 in little endian
-     * 115200 = 0x1C200 -> 0x00, 0xC2, 0x01 in little endian
-     * 921600 = 0xE1000 -> 0x00, 0x10, 0x0E in little endian
-     */
-    unsigned char encoding[] = { 0x00, 0x10, 0x0E, 0x00, 0x00, 0x00, 0x08 };
-
-     /* Initialize libusb */
-    rc = libusb_init(NULL);
-    if (rc < 0) {
-        fprintf(stderr, "Error initializing libusb: %s\n", libusb_error_name(rc));
-        exit(1);
-    }
-
-    /* Set debugging output to max level. */
-    // libusb_set_debug(NULL, 3);  /* DEPRECATED */
-    libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, 3);
-
-    /* Look for a specific device and open it. */
-    devh = libusb_open_device_with_vid_pid(NULL, VENDOR_ID, PRODUCT_ID);
-    if (!devh) {
-        fprintf(stderr, "Error finding USB device\n");
-        goto out;
-    }
-
-    /* As we are dealing with a CDC-ACM device, it's highly probable that
-     * Linux already attached the cdc-acm driver to this device.
-     * We need to detach the drivers from all the USB interfaces. The CDC-ACM
-     * Class defines two interfaces: the Control interface and the
-     * Data interface.
-     */
-    for (int if_num = 0; if_num < 2; if_num++) {
-        if (libusb_kernel_driver_active(devh, if_num)) {
-            libusb_detach_kernel_driver(devh, if_num);
-        }
-        rc = libusb_claim_interface(devh, if_num);
-        if (rc < 0) {
-            fprintf(stderr, "Error claiming interface: %s\n",
-                    libusb_error_name(rc));
-            goto out;
-        }
-    }
-
-    /* Start configuring the device:
-     * - set line state
-     */
-    rc = libusb_control_transfer(devh, 0x21, 0x22, ACM_CTRL_DTR | ACM_CTRL_RTS,
-                                0, NULL, 0, 0);
-    if (rc < 0) {
-        fprintf(stderr, "Error during control transfer: %s\n",
-                libusb_error_name(rc));
-    }
-
-    /* - set line encoding: here 9600 8N1
-     * 9600 = 0x2580 -> 0x80, 0x25 in little endian
-     * 115200 = 0x1C200 -> 0x00, 0xC2, 0x01 in little endian
-     */
-    // unsigned char encoding[] = { 0x00, 0xC2, 0x01, 0x00, 0x00, 0x00, 0x08 };
-    rc = libusb_control_transfer(devh, 0x21, 0x20, 0, 0, encoding,
-                                sizeof(encoding), 0);
-    if (rc < 0) {
-        fprintf(stderr, "Error during control transfer: %s\n",
-                libusb_error_name(rc));
-    }
-
-    return rc;
-out:
-    gpioStop();
-    return rc;
-}
-
-void sidWrite(unsigned char *buff)
-{
-    int size = sizeof(buff);
-    int actual_length;
-    if (libusb_bulk_transfer(devh, ep_out_addr, buff, size,
-                            &actual_length, 0) < 0)
-    {
-        fprintf(stderr, "Error while sending char\n");
-    }
-}
-
-unsigned char sidRead(unsigned char *writebuff, unsigned char *buff)
-{
-    sidWrite(writebuff);
-    unsigned char readbuffer[4];
-    int rc, actual_length;
-    rc = libusb_bulk_transfer(devh, ep_in_addr, readbuffer, sizeof(readbuffer), &actual_length, 1000);
-    if (rc == LIBUSB_ERROR_TIMEOUT) {
-        fprintf(stderr, "Timeout (%d)\n", actual_length);
-        return -1;
-    } else if (rc < 0) {
-        fprintf(stderr, "Error while waiting for char\n");
-    }
-    buff[0] = readbuffer[0];
-    return actual_length;
-}
-
-void pauseSID(void)
-{
-    unsigned char buff[4] = {0x2, 0x0, 0x0, 0x0};
-    sidWrite(buff);
-}
-
-void resetSID(void)
-{
-    unsigned char buff[4] = {0x3, 0x0, 0x0, 0x0};
-    sidWrite(buff);
+    usbSIDSetup();
+    return 0;
 }
 
 int gpioStop()
 {
-    if (devh != NULL) {
-        unsigned char buff[4] = {0x0, 0x0, 0x0, 0x0};
-        sidWrite(buff);
-        for (int if_num = 0; if_num < 2; if_num++) {
-            libusb_release_interface(devh, if_num);
-            if (libusb_kernel_driver_active(devh, if_num)) {
-            libusb_detach_kernel_driver(devh, if_num);
-            }
-        }
-        libusb_close(devh);
-        libusb_exit(NULL);
-    }
-    devh = NULL;
-    fprintf(stdout, "Linux usbsid: closed.");
+    usbSIDExit();
     return 0;
 }
 
 void gpioMode(int pin, int mode)
 {
+    (void)pin;
+    (void)mode;
 }
 
 int gpioRead(int pin)
 {
+    (void)pin;
     return 0;
 }
 
 void gpioWrite(int pin, int level)
 {
+    (void)pin;
+    (void)level;
 }
 
 #elif BOARD == CUSTOM // Custom Board

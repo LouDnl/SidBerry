@@ -20,9 +20,15 @@ using namespace std;
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
-
 #include "gpioInterface.h"
-#include "macros.h"
+
+
+#if defined(DEBUG_SIDBERRY)
+#define DBG(...) printf(__VA_ARGS__)
+#else
+#define DBG(...)
+#endif
+
 
 // Clock cycles for the MOS6502
 #define CLOCK_CYCLES 100000
@@ -40,6 +46,9 @@ using namespace std;
 
 // Default addresses
 #define VOL_ADDR 0xD418
+
+// mos6502 memory
+extern uint8_t memory[65536];
 
 enum clock_speeds
 {
@@ -73,7 +82,6 @@ extern int custom_hertz;
 extern int volume;
 extern int clock_speed;
 extern int refresh_rate;
-extern uint8_t memory[65536];
 extern bool verbose;
 extern bool trace;
 extern bool calculatedclock;

@@ -12,8 +12,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <cstdint>
 
-#include "macros.h"
+/* #include "macros.h" */
 
 #define USBSIDPICO 0
 #define FTDI 1
@@ -97,8 +98,7 @@ int gpioDisableBB();  // FTDI Only
 
 #elif BOARD == USBSIDPICO
 
-#include <errno.h>
-#include <libusb.h>
+#include "usbsid/usbsid_driver.h"
 
 // REQUIRED ~ init all to 0
 #define HIGH 1
@@ -124,12 +124,6 @@ int gpioDisableBB();  // FTDI Only
 #define D5 0
 #define D6 0
 #define D7 0
-
-/* USBSID-Pico specific functions */
-void sidWrite(unsigned char *buff);
-unsigned char sidRead(unsigned char *writebuff, unsigned char *buff);
-void pauseSID(void);
-void resetSID(void);
 
 #elif BOARD == CUSTOM // Custom Board
 // 1) GPIO library (if needed)
