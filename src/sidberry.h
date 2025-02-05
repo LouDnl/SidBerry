@@ -20,7 +20,8 @@ using namespace std;
 #include <fcntl.h>
 #include <termios.h>
 #include <stdio.h>
-#include "gpioInterface.h"
+
+#include "driver/USBSID.h"
 
 
 #if defined(DEBUG_SIDBERRY)
@@ -52,28 +53,40 @@ extern uint8_t memory[65536];
 
 enum clock_speeds
 {
-    UNKNOWN = CLOCK_DEFAULT,
-    PAL     = CLOCK_PAL,
-    NTSC    = CLOCK_NTSC,
-    BOTH    = CLOCK_NTSC,
-    DREAN   = CLOCK_DREAN,
-
+  UNKNOWN = CLOCK_DEFAULT,
+  PAL     = CLOCK_PAL,
+  NTSC    = CLOCK_NTSC,
+  BOTH    = CLOCK_NTSC,
+  DREAN   = CLOCK_DREAN,
 };
-static const enum clock_speeds clockSpeed[] = {UNKNOWN, PAL, NTSC, BOTH, DREAN};
 
 enum refresh_rates
 {
-    DEFAULT = HERTZ_DEFAULT,
-    EU      = HERTZ_50,
-    US      = HERTZ_60,
-    GLOBAL  = HERTZ_60
+  DEFAULT = HERTZ_DEFAULT,
+  EU      = HERTZ_50,
+  US      = HERTZ_60,
+  GLOBAL  = HERTZ_60
 };
-static const enum refresh_rates refreshRate[] = {DEFAULT, EU, US, GLOBAL};
 
-/*
-    printf("enum index %i\n", (clock_speed)cs); // index
-    printf("enum value %i\n", clockSpeed[cs]);  // value
-*/
+enum scan_lines
+{
+  C64_PAL_SCANLINES = 312,
+  C64_NTSC_SCANLINES = 263
+};
+
+enum scanline_cycles
+{
+  C64_PAL_SCANLINE_CYCLES = 63,
+  C64_NTSC_SCANLINE_CYCLES = 65
+};
+
+static const enum clock_speeds clockSpeed[] = {UNKNOWN, PAL, NTSC, BOTH, DREAN};
+static const enum refresh_rates refreshRate[] = {DEFAULT, EU, US, GLOBAL};
+static const enum scan_lines scanLines[] = {C64_PAL_SCANLINES, C64_NTSC_SCANLINES};
+static const enum scanline_cycles scanlinesCycles[] = {C64_PAL_SCANLINE_CYCLES, C64_NTSC_SCANLINE_CYCLES};
+const char *chiptype[4] = {"Unknown", "MOS6581", "MOS8580", "MOS6581 and MOS8580"};
+const char *clockspeed[5] = {"Unknown", "PAL", "NTSC", "PAL and NTSC", "DREAN"};
+
 extern timeval t1, t2;
 extern long int elaps;
 extern int sidcount;
@@ -89,6 +102,9 @@ extern bool calculatedhz;
 extern bool real_read;
 extern volatile sig_atomic_t stop;
 
+/* USBSID Specific */
+USBSID_NS::USBSID_Class* us_sid;
+
 /* function to track ctrl+c
    sigint excerpt from https://stackoverflow.com/questions/26965508/infinite-while-loop-and-control-c#26965628 */
 void inthand(int signum);
@@ -96,8 +112,6 @@ void inthand(int signum);
 /* Handler for a clean exit */
 void exitPlayer(void);
 
-/* Set up gpio pins for single read or write actions */
-void enableGpio(void);
 /* Do a single write from the command line to $addr with $byte */
 void SingleWrite(uint16_t addr, uint8_t byte);
 /* Do a single read from the command line from $addr */

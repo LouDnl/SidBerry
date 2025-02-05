@@ -17,24 +17,32 @@ using namespace std;
 enum
 {
     SIDFILE_PSID_ID = 0,          // 'PSID'
-    SIDFILE_PSID_VERSION = 4,     // 1, 2, 3 or 4
-    SIDFILE_PSID_LENGTH = 6,      // Header length
-    SIDFILE_PSID_START = 8,       // C64 load address
-    SIDFILE_PSID_INIT = 10,       // C64 init routine address
-    SIDFILE_PSID_MAIN = 12,       // C64 replay routine address
-    SIDFILE_PSID_NUMBER = 14,     // Number of subsongs
-    SIDFILE_PSID_DEFSONG = 16,    // Main subsong number
+    SIDFILE_PSID_VERSION_H = 4,   // 1, 2, 3 or 4
+    SIDFILE_PSID_VERSION_L = 5,   // 1, 2, 3 or 4
+    SIDFILE_PSID_LENGTH_H = 6,    // Header length
+    SIDFILE_PSID_LENGTH_L = 7,    // Header length
+    SIDFILE_PSID_START_H = 8,     // C64 load address
+    SIDFILE_PSID_START_L = 9,     // C64 load address
+    SIDFILE_PSID_INIT_H = 10,     // C64 init routine address
+    SIDFILE_PSID_INIT_L = 11,     // C64 init routine address
+    SIDFILE_PSID_MAIN_H = 12,     // C64 replay routine address
+    SIDFILE_PSID_MAIN_L = 13,     // C64 replay routine address
+    SIDFILE_PSID_NUMBER_H = 14,   // Number of subsongs
+    SIDFILE_PSID_NUMBER_L = 15,   // Number of subsongs
+    SIDFILE_PSID_DEFSONG_H = 16,  // Main subsong number
+    SIDFILE_PSID_DEFSONG_L = 17,  // Main subsong number
     SIDFILE_PSID_SPEED = 18,      // Speed flags (1 bit/song)
     SIDFILE_PSID_NAME = 22,       // Module name (ISO Latin1 character set)
     SIDFILE_PSID_AUTHOR = 54,     // Author name (dto.)
     SIDFILE_PSID_COPYRIGHT = 86,  // Release year and Copyright info (dto.)
 
-    SIDFILE_PSID_FLAGS = 118,       // WORD Flags (only in version 2, 3 & 4 header)
+    SIDFILE_PSID_FLAGS_H = 118,    // WORD Flags (only in version 2, 3 & 4 header)
+    SIDFILE_PSID_FLAGS_L = 119,    // WORD Flags (only in version 2, 3 & 4 header)
     SIDFILE_PSID_STARTPAGE = 120,  // BYTE startPage (relocStartPage)
     SIDFILE_PSID_PAGELENGTH = 121, // BYTE pageLength (relocPages)
-    SIDFILE_PSID_SECONDSID = 122,  // BYTE secondSIDAddress
-    SIDFILE_PSID_THIRDSID = 123,   // BYTE thirdSIDAddress
-    SIDFILE_PSID_FOURTHSID = 124,  // BYTE fourthSIDAddress
+    SIDFILE_PSID_SECONDSID = 122,  // BYTE secondSIDAddress $42..$FE
+    SIDFILE_PSID_THIRDSID = 123,   // BYTE thirdSIDAddress $42..$FE
+    SIDFILE_PSID_FOURTHSID = 124,  // BYTE fourthSIDAddress $42..$FE
 };
 
 enum
