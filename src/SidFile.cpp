@@ -37,7 +37,7 @@ uint32_t SidFile::Read32(const uint8_t *p, int offset)
 bool SidFile::IsPSIDHeader(const uint8_t *p)
 {
     uint32_t id = Read32(p, SIDFILE_PSID_ID);
-    uint16_t version = Read16(p, SIDFILE_PSID_VERSION);
+    uint16_t version = Read16(p, SIDFILE_PSID_VERSION_H);
     /* Add v3 Dual SID, v4 Triple SID, v5 Quad SID file support */
     return id == 0x50534944 && (version >= 1 || version <= 4);
 }
@@ -62,14 +62,14 @@ int SidFile::Parse(string file)
         return SIDFILE_ERROR_MALFORMED;
     }
 
-    numOfSongs = Read16(header, SIDFILE_PSID_NUMBER);
+    numOfSongs = Read16(header, SIDFILE_PSID_NUMBER_H);
 
     if (numOfSongs == 0)
     {
         numOfSongs = 1;
     }
 
-    firstSong = Read16(header, SIDFILE_PSID_DEFSONG);
+    firstSong = Read16(header, SIDFILE_PSID_DEFSONG_H);
     if (firstSong)
     {
         firstSong--;
@@ -79,9 +79,9 @@ int SidFile::Parse(string file)
         firstSong = 0;
     }
 
-    dataOffset = Read16(header, SIDFILE_PSID_LENGTH);
-    initAddr = Read16(header, SIDFILE_PSID_INIT);
-    playAddr = Read16(header, SIDFILE_PSID_MAIN);
+    dataOffset = Read16(header, SIDFILE_PSID_LENGTH_H);
+    initAddr = Read16(header, SIDFILE_PSID_INIT_H);
+    playAddr = Read16(header, SIDFILE_PSID_MAIN_H);
     speedFlags = Read32(header, SIDFILE_PSID_SPEED);
 
     moduleName = (char *)(header + SIDFILE_PSID_NAME);
@@ -91,13 +91,13 @@ int SidFile::Parse(string file)
     copyrightInfo = (char *)(header + SIDFILE_PSID_COPYRIGHT);
 
     sidType = (char *)(header + SIDFILE_PSID_ID);
-    sidVersion = Read16(header, SIDFILE_PSID_VERSION);
+    sidVersion = Read16(header, SIDFILE_PSID_VERSION_H);
 
     // Seek to start of module data
-    fseek(f, Read16(header, SIDFILE_PSID_LENGTH), SEEK_SET);
+    fseek(f, Read16(header, SIDFILE_PSID_LENGTH_H), SEEK_SET);
 
     // Find load address
-    loadAddr = Read16(header, SIDFILE_PSID_START);
+    loadAddr = Read16(header, SIDFILE_PSID_START_H);
     if (loadAddr == 0)
     {
         uint8_t lo = fgetc(f);
@@ -114,7 +114,7 @@ int SidFile::Parse(string file)
     dataLength = fread(dataBuffer, 1, 0x10000, f);
 
     // flags start at 0x76
-    sidFlags = Read16(header, SIDFILE_PSID_FLAGS);
+    sidFlags = Read16(header, SIDFILE_PSID_FLAGS_H);
 
     // - Bit 0 specifies format of the binary data (musPlayer):
     // 0 = built-in music player,
@@ -138,7 +138,8 @@ int SidFile::Parse(string file)
     // 11 = PAL and NTSC.
 
     // clockSpeed = (reverse(sidFlags) >> 5) & 3; // 0b00001100 bits 2 & 3 ~ but from reverse bits
-    clockSpeed = (sidFlags >> 2) & 3; // 0b00001100 bits 2 & 3
+    // clockSpeed = (sidFlags >> 2) & 3; // 0b00001100 bits 2 & 3
+    clockSpeed = ((sidFlags & 0xC) >> 2) & 3; // 0b00001100 bits 2 & 3
 
     // - Bits 4-5 specify the SID version (sidModel):
     // 00 = Unknown,
