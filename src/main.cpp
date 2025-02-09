@@ -344,8 +344,10 @@ void sidPlaySetup(void)
     /* Sleep 400ms for Reset to settle */
     struct timespec tv = { .tv_sec = 0, .tv_nsec = (400 * 1000 * 1000) };
     nanosleep(&tv, &tv);
+    #ifndef NO_REBOOT
     us_sid->USBSID_Mute();
     us_sid->USBSID_ClearBus();
+    #endif
 }
 
 int main(int argc, char *argv[])
