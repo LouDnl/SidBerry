@@ -89,7 +89,6 @@ const char *clockspeed[5] = {"Unknown", "PAL", "NTSC", "PAL and NTSC", "DREAN"};
 
 extern timeval t1, t2;
 extern long int elaps;
-extern int sidcount;
 extern int custom_clock;
 extern int custom_hertz;
 extern int volume;
