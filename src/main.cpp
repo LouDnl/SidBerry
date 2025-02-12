@@ -12,11 +12,15 @@
 
 uint8_t memory[65536];         // init 64K ram
 int sidcount = 1;              // default to 1 sid
+int sidno;
+uint16_t sidone, sidtwo, sidthree, sidfour;
 int custom_clock = 0;          // default custom clock to 0
 int custom_hertz = 0;          // default custom hertz to 0
 int volume = 15;               // init volume at 10. max is 15
+
 bool verbose = false;          // init verbose boolean
 bool trace = false;            // init trace boolean
+
 bool calculatedclock = false;  // init calculated clock speed boolean
 bool calculatedhz = false;     // init calculated refresh boolean
 volatile sig_atomic_t stop;    // init variable for ctrl+c
@@ -46,6 +50,57 @@ void inthand(int signum)
     exitPlayer();
 }
 
+uint8_t addr_translation(uint16_t addr)
+{
+    switch (sidcount) {
+        case 1: /* Easy just return the address */
+            if (addr >= sidone && addr < (sidone + 0x20)) {
+                sidno = 1;
+                return (addr & 0x1F);
+            };
+            break;
+        case 2: /* Intermediate remap all above 0x20 to sidno 2 */
+            if (addr >= sidone && addr < (sidone + 0x20)) {
+                sidno = 1;
+                return (addr & 0x1F);
+            } else if (addr >= sidtwo && addr < (sidtwo + 0x20)) {
+                sidno = 2;
+                return (0x20 + (addr & 0x1F));
+            };
+            break;
+        case 3: /* Advanced */
+            if (addr >= sidone && addr < (sidone + 0x20)) {
+                sidno = 1;
+                return (addr & 0x1F);
+            } else if (addr >= sidtwo && addr < (sidtwo + 0x20)) {
+                sidno = 2;
+                return (0x20 + (addr & 0x1F));
+            } else if (addr >= sidthree && addr < (sidthree + 0x20)) {
+                sidno = 3;
+                return (0x40 + (addr & 0x1F));
+            };
+            break;
+        case 4: /* Expert */
+            if (addr >= sidone && addr < (sidone + 0x20)) {
+                sidno = 1;
+                return (addr & 0x1F);
+            } else if (addr >= sidtwo && addr < (sidtwo + 0x20)) {
+                sidno = 2;
+                return (0x20 + (addr & 0x1F));
+            } else if (addr >= sidthree && addr < (sidthree + 0x20)) {
+                sidno = 3;
+                return (0x40 + (addr & 0x1F));
+            } else if (addr >= sidfour && addr < (sidfour + 0x20)) {
+                sidno = 4;
+                return (0x60 + (addr & 0x1F));
+            };
+            break;
+        default:
+            break;
+    };
+    return 0xFE;
+}
+
 void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
 {
     if (addr >= 0xD400 && addr <= 0xD5FF || addr >= 0xDE00 && addr <= 0xDFFF)
@@ -63,17 +118,13 @@ void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
                     memory[0xD415], memory[0xD416], memory[0xD417], memory[0xD418]);
         }
 
-        uint16_t phyaddr = addr & 0x7F;     /* 4 SIDs max */
-
-
-        addr = us_sid->USBSID_Address(addr);  /* 3 Byte buffer address translation */
-        phyaddr = addr & 0xFF;
+        uint8_t phyaddr = addr_translation(addr) & 0xFF;  /* 4 SIDs max */
         unsigned char buff[3] = { 0x0, phyaddr, byte };   /* 3 Byte buffer */
         us_sid->USBSID_Write(buff, 3);
 
         if (verbose && trace)
         {
-            fprintf(stdout, "[W]@%02x [D]%02x\n", phyaddr, byte);
+            fprintf(stdout, "[%d][W]@%02x [D]%02x\n", sidno, phyaddr, byte);
         }
     }
     else
@@ -111,16 +162,13 @@ uint8_t MemRead(uint16_t addr)
             // access to SID chip
             if ((addr & 0x001F) == 0x001B || (addr & 0x001F) == 0x001C)
             {
-                uint16_t phyaddr = addr & 0xFF;
-
                 /* USBSID code */
-                addr = us_sid->USBSID_Address(addr);
-                phyaddr = addr & 0xFF;
+                uint8_t phyaddr = addr_translation(addr) & 0xFF;  /* 4 SIDs max */
                 unsigned char buff[3] = { 0x1, phyaddr, 0x0 };   /* 3 Byte buffer */
                 uint8_t result = us_sid->USBSID_Read(buff);
                 if (verbose && trace)
                 {
-                    fprintf(stdout, "[R]@%02x [D]%02x\n", phyaddr, result);
+                    fprintf(stdout, "[%d][R]@%02x [D]%02x\n", sidno, phyaddr, result);
                 }
                 return result;
             }
@@ -340,7 +388,10 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
 void sidPlaySetup(void)
 {
     USBSID_NS::USBSID_Class* us_sid = new USBSID_NS::USBSID_Class();
-    us_sid->USBSID_Init(false, false);
+    if (us_sid->USBSID_Init(false, false) < 0) {
+        printf("USBSID-Pico not found, exiting...");
+        exit(1);
+    }
     /* Sleep 400ms for Reset to settle */
     struct timespec tv = { .tv_sec = 0, .tv_nsec = (400 * 1000 * 1000) };
     nanosleep(&tv, &tv);
@@ -526,6 +577,22 @@ int main(int argc, char *argv[])
                 : sv == 78
                 ? 4
                     : 1;
+    sidno = 0;
+    sidone = 0xD400;
+    /* printf("[1]$%04X ", sidone); */
+    if (sv == 3 || sv == 4 || sv == 78) {
+        sidtwo = 0xD000 | (sid.GetSIDaddr(2) << 4);
+        /* printf("[2]$%04X ", sidtwo); */
+        if (sv == 4 || sv == 78) {
+            sidthree = 0xD000 | (sid.GetSIDaddr(3) << 4);
+            /* printf("[3]$%04X ", sidthree); */
+        }
+        if (sv == 78) {
+            sidfour = 0xD000 | (sid.GetSIDaddr(4) << 4);
+            /* printf("[4]$%04X ", sidfour); */
+        }
+    }
+    printf("\n");
 
     sidPlaySetup();  // Setup for playing SID files
 
