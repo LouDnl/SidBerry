@@ -440,7 +440,7 @@ ssize_t read_serial(int fd, char* buffer, size_t count) {
 ssize_t write_serial(int fd, char* buffer, size_t count) {
 
   if (fd != com.fd) return -1;
-  int rc = 0;
+  long unsigned int rc = 0;
   int ret;
 
   ret = WriteFile(com.hComm, buffer, count, &rc, NULL);
