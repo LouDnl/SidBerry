@@ -42,7 +42,7 @@ bool SidFile::IsPSIDHeader(const uint8_t *p)
     return id == 0x50534944 && (version >= 1 || version <= 4);
 }
 
-int SidFile::Parse(string file)
+int SidFile::Parse(std::string file)
 {
     FILE *f = fopen(file.c_str(), "rb");
 
@@ -179,22 +179,22 @@ int SidFile::Parse(string file)
     return SIDFILE_OK;
 }
 
-string SidFile::GetSidType()
+std::string SidFile::GetSidType()
 {
     return sidType;
 }
 
-string SidFile::GetModuleName()
+std::string SidFile::GetModuleName()
 {
     return moduleName;
 }
 
-string SidFile::GetAuthorName()
+std::string SidFile::GetAuthorName()
 {
     return authorName;
 }
 
-string SidFile::GetCopyrightInfo()
+std::string SidFile::GetCopyrightInfo()
 {
     return copyrightInfo;
 }
