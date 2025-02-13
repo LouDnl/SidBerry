@@ -39,10 +39,6 @@
 
 /*Redefining functions from winsock to termiWin. This is very important since winsock2 defines functions such as close as closesocket we have to redefine it*/
 
-#ifdef __MINGW32__
-#define TERMIWIN_DONOTREDEFINE
-#endif
-
 #ifndef TERMIWIN_DONOTREDEFINE
 #define read read_serial
 #define write serial_write
