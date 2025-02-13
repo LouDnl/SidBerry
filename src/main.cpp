@@ -385,7 +385,7 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
     }
 }
 
-void sidPlaySetup(void)
+void USBSIDSetup(void)
 {
     USBSID_NS::USBSID_Class* us_sid = new USBSID_NS::USBSID_Class();
     if (us_sid->USBSID_Init(false, false) < 0) {
@@ -594,7 +594,15 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
-    sidPlaySetup();  // Setup for playing SID files
+    USBSIDSetup();  /* Setup for playing SID files */
+
+    if(us_sid->USBSID_GetClockRate() != clock_speed) {
+        us_sid->USBSID_SetClockRate(clock_speed, true);
+    }
+
+    if(us_sid->USBSID_GetNumSIDs() < sidcount) {
+        printf("[WARNING] Tune no.sids %d is higher then USBSID-Pico no.sids %d\n", sidcount, us_sid->USBSID_GetNumSIDs());
+    }
 
     srand(0);
     mos6502 cpu(MemRead, MemWrite);

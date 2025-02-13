@@ -128,7 +128,7 @@ int getch_noecho_special_char(void);
 /* Player state handler */
 void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused, bool *exit, uint8_t *mode_vol_reg, int *song_number, int *sec, int *min);
 /* Player setup */
-void sidPlaySetup(void);
+void USBSIDSetup(void);
 
 /* Deprecated test function */
 void TestWrite(uint16_t addr, uint8_t byte);
