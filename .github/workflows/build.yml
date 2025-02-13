@@ -15,6 +15,8 @@ on:
   # Allows you to run this workflow manually from the Actions tab when needed
   workflow_dispatch:
 
+# CMake info: https://www.msys2.org/docs/cmake/
+
 jobs:
   build_deb:
     name: Build Debian/Ubuntu
@@ -116,8 +118,6 @@ jobs:
           msystem: ${{ matrix.system }}
           update: true
           install: >-
-            autotools
-            base-devel
             git
             mingw-w64-${{ matrix.arch }}-cmake
             mingw-w64-${{ matrix.arch }}-make
@@ -138,8 +138,6 @@ jobs:
 
       - name: 🏭 Setup CMAKE
         run: |
-          pacman -Ql mingw-w64-${{ matrix.arch }}-pkgconf
-          export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:/mingw64/share/pkgconfig"
           cmake -G "MinGW Makefiles" -S master -B ${{github.workspace}}/master/build_${{matrix.directory}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ $extra_arg
 
       - name: 🏭 Build ${{matrix.name}}
