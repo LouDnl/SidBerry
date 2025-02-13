@@ -34,6 +34,8 @@ set(SOURCEFILES
   ${CMAKE_CURRENT_LIST_DIR}/src/driver/USBSID.cpp
 )
 
+project(${PROJECT_NAME} C CXX)
+
 # these calls create special `PkgConfig::<MODULE>` variables
 pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
 if (UNIX)
