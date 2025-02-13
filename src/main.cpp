@@ -4,6 +4,10 @@
 // Last update : 2024
 //============================================================================
 
+#ifdef TERMIWIN_DONOTREDEFINE
+#include "winsock2.h"
+#include "windows.h"
+#endif
 #include "mos6502/mos6502.h"
 #include "SidFile.h"
 #include "sidberry.h"
@@ -234,6 +238,7 @@ int load_sid(mos6502 cpu, SidFile sid, int song_number)
 
 int getch_noecho_special_char(void)
 {
+    #ifndef TERMIWIN_DONOTREDEFINE  /* TODO: Finish for Windows! */
     int char_code = 0;
     int buf = 0;
     char buf2[3] = {0, 0, 0};
@@ -275,6 +280,9 @@ int getch_noecho_special_char(void)
     tcsetattr(0, TCSADRAIN, &old);
 
     return buf;
+    #else
+    return 0;
+    #endif
 }
 
 void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused, bool *exit, uint8_t *mode_vol_reg, int *song_number, int *sec, int *min)
@@ -385,7 +393,7 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
     }
 }
 
-void sidPlaySetup(void)
+void USBSIDSetup(void)
 {
     USBSID_NS::USBSID_Class* us_sid = new USBSID_NS::USBSID_Class();
     if (us_sid->USBSID_Init(false, false) < 0) {
@@ -594,7 +602,15 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
-    sidPlaySetup();  // Setup for playing SID files
+    USBSIDSetup();  /* Setup for playing SID files */
+
+    if(us_sid->USBSID_GetClockRate() != clock_speed) {
+        us_sid->USBSID_SetClockRate(clock_speed, true);
+    }
+
+    if(us_sid->USBSID_GetNumSIDs() < sidcount) {
+        printf("[WARNING] Tune no.sids %d is higher then USBSID-Pico no.sids %d\n", sidcount, us_sid->USBSID_GetNumSIDs());
+    }
 
     srand(0);
     mos6502 cpu(MemRead, MemWrite);
@@ -632,7 +648,8 @@ int main(int argc, char *argv[])
         while (paused)
         {
             change_player_status(cpu, sid, getch_noecho_special_char(), &paused, &exit, &mode_vol_reg, &song_number, &sec, &min);
-            usleep(100000);
+            /* usleep(100000); */
+            std::this_thread::sleep_for(std::chrono::microseconds(100000));
         }
 
         gettimeofday(&t1, NULL);
@@ -658,7 +675,8 @@ int main(int argc, char *argv[])
         else
             elaps = clock_speed - t1.tv_usec + t2.tv_usec;
         if (elaps < refresh_rate /* frame_cycles */) {
-            usleep(refresh_rate /* frame_cycles */ - elaps); // 50Hz refresh rate is 20us
+            // usleep(refresh_rate /* frame_cycles */ - elaps); // 50Hz refresh rate is 20us
+            std::this_thread::sleep_for(std::chrono::microseconds(refresh_rate - elaps));
         }
         time_unit++;
         frames = (cyclecount / refresh_rate);

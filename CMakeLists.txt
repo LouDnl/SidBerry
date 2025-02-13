@@ -1,9 +1,6 @@
 ### Cmake minimum version
 cmake_minimum_required(VERSION 3.17)
 
-# the `pkg_check_modules` function is created with this call
-find_package(PkgConfig REQUIRED)
-
 ### Cmake compiler standard versions
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -26,24 +23,48 @@ set(COMPILE_OPTS PRIVATE
   -fverbose-asm
 )
 
+# Windows additionals
+if (WIN32)
+set(WIN32_SRC
+  ${CMAKE_CURRENT_LIST_DIR}/src/termiwin/termiWin.c
+)
+set(WIN32_INC
+  ${CMAKE_CURRENT_LIST_DIR}/src/termiwin
+)
+endif (WIN32)
+
+
+# Run the project command
+project(${PROJECT_NAME} C CXX ASM)
+
+# the `pkg_check_modules` function is created with this call
+find_package(PkgConfig REQUIRED)
+
+# these calls create special `PkgConfig::<MODULE>` variables
+pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
+
+### Libraries to link
+if (UNIX)
+pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET udev)
+set(TARGET_LL
+  PkgConfig::LIBUSB
+  PkgConfig::UDEV
+)
+endif (UNIX)
+if (WIN32)
+set(TARGET_LL
+  PkgConfig::LIBUSB
+)
+endif (WIN32)
+
 ### Source files to compile
 set(SOURCEFILES
   ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/SidFile.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/mos6502/mos6502.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/driver/USBSID.cpp
+  ${WIN32_SRC}
 )
-
-# these calls create special `PkgConfig::<MODULE>` variables
-pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
-pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET udev)
-
-### Libraries to link
-set(TARGET_LL
-  PkgConfig::LIBUSB
-  PkgConfig::UDEV
-)
-
 ### Header folders to include
 set(TARGET_INCLUDE_DIRS PRIVATE
   .
@@ -51,14 +72,16 @@ set(TARGET_INCLUDE_DIRS PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/src
   ${CMAKE_CURRENT_LIST_DIR}/src/mos6502
   ${CMAKE_CURRENT_LIST_DIR}/src/driver
+  ${WIN32_INC}
   /usr/local/lib
 )
 
-### Project type
-project(${PROJECT_NAME} C CXX ASM)
-
 ### Compile time
 add_executable(${PROJECT_NAME} ${SOURCEFILES})
+
+if (WIN32)
+target_compile_definitions(${PROJECT_NAME} PRIVATE TERMIWIN_DONOTREDEFINE=1)
+endif (WIN32)
 
 target_include_directories(${PROJECT_NAME} ${TARGET_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${TARGET_LL})

@@ -1,0 +1,175 @@
+name: USBSIDBerry Build
+
+env:
+  BUILD_THREADS: 4
+  BUILD_TYPE: Release
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - ".github/workflows/build.yml"
+      - "CMakeLists.txt"
+    # Only run on dev branch
+    branches: [dev]
+  # Allows you to run this workflow manually from the Actions tab when needed
+  workflow_dispatch:
+
+# CMake info: https://www.msys2.org/docs/cmake/
+
+jobs:
+  build_deb:
+    name: Build Debian/Ubuntu
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {
+              name: USBSIDBerry,
+              directory: sidberry,
+              filename: usbsidberry,
+            }
+    steps:
+      - shell: bash
+        run: git config --global core.autocrlf input
+
+      - name: 🛠️ Install Act dependencies
+        if: ${{ env.ACT }}
+        run: |
+          apt-get update && apt-get install sudo -y
+
+      - name: 🛠️ Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y curl \
+                              build-essential \
+                              cmake \
+                              libusb-1.0-0 \
+                              libusb-1.0-0-dev \
+                              libusb-dev \
+                              udev
+
+      - name: 📇 Checkout project
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          path: master
+
+      - name: 🏭 Create build folders
+        run: |
+          mkdir -p ${{github.workspace}}/master/build_${{matrix.directory}}
+
+      - name: 🏭 Setup CMAKE
+        run: |
+          cmake -S master -B ${{github.workspace}}/master/build_${{matrix.directory}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} $extra_arg
+
+      - name: 🏭 Build ${{matrix.name}}
+        run: |
+          cmake --build ${{github.workspace}}/master/build_${{matrix.directory}} --config ${{env.BUILD_TYPE}} -j ${{env.BUILD_THREADS}}
+
+      - name: List build files
+        run: |
+          ls ${{github.workspace}}/master/build_${{matrix.directory}}/usbsidberry -la
+
+      - name: 💾 Gather Artifact Files
+        working-directory: ${{github.workspace}}/master
+        run: |
+          mkdir dist
+          cp -av build_${{matrix.directory}}/usbsidberry dist/${{matrix.filename}}
+
+      - name: Get current branch
+        run: |
+          echo "BRANCHNAME=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+
+      - name: Get current datetime
+        run: |
+          echo "DATETIME=$(date +'%Y%m%dT%H%M%S')" >> $GITHUB_ENV
+
+      - name: 💾 Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{matrix.name}}-${{env.BRANCHNAME}}-autobuild-${{github.run_number}}-${{env.DATETIME}}
+          path: ${{github.workspace}}/master/dist
+
+  build_win:
+    name: Build Windows
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {
+              name: USBSIDBerryWin,
+              directory: sidberry,
+              filename: "usbsidberry.exe",
+              system: MINGW64,
+              arch: x86_64,
+              prefix: mingw64,
+            }
+    steps:
+      - shell: bash
+        run: git config --global core.autocrlf input
+      - name: 🛠️ Install dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.system }}
+          update: true
+          install: >-
+            git
+            mingw-w64-${{ matrix.arch }}-cmake
+            mingw-w64-${{ matrix.arch }}-make
+            mingw-w64-${{ matrix.arch }}-pkgconf
+            mingw-w64-${{ matrix.arch }}-curl
+            mingw-w64-${{ matrix.arch }}-toolchain
+            mingw-w64-${{ matrix.arch }}-libusb
+
+      - name: 📇 Checkout project
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 🏭 Create build folders
+        shell: msys2 {0}
+        run: |
+          mkdir -p build_${{matrix.directory}}
+
+      - name: 🏭 Setup CMAKE
+        shell: msys2 {0}
+        run: |
+          cmake -G "MinGW Makefiles" -S . -B build_${{matrix.directory}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ $extra_arg
+
+      - name: 🏭 Build ${{matrix.name}}
+        id: build
+        shell: msys2 {0}
+        run: |
+          MINGW_INSTALLS=${{ matrix.system }} cmake --build build_${{matrix.directory}} --config ${{env.BUILD_TYPE}} -j ${{env.BUILD_THREADS}}
+
+      - name: List build files
+        shell: msys2 {0}
+        run: |
+          ls build_${{matrix.directory}}/usbsidberry -la
+
+      - name: 💾 Gather Artifact Files
+        shell: msys2 {0}
+        run: |
+          mkdir dist
+          cp -av build_${{matrix.directory}}/usbsidberry dist/${{matrix.filename}}
+
+      - name: Get current branch
+        shell: msys2 {0}
+        run: |
+          echo "BRANCHNAME=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+
+      - name: Get current datetime
+        shell: msys2 {0}
+        run: |
+          echo "DATETIME=$(date +'%Y%m%dT%H%M%S')" >> $GITHUB_ENV
+
+      - name: 💾 Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{matrix.name}}-${{env.BRANCHNAME}}-autobuild-${{github.run_number}}-${{env.DATETIME}}
+          path: dist
