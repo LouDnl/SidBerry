@@ -4,11 +4,14 @@
 // Last update : 2024
 //============================================================================
 
+#include <cstdint>
+#include <cstring>
+#include <string>
+#ifndef TERMIWIN_DONOTREDEFINE
 #include <iostream>
-#include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 using namespace std;
+#endif
 
 #define PSID_MIN_HEADER_LENGTH 118 // Version 1
 #define PSID_MAX_HEADER_LENGTH 125 // Version 2 (124), 3 & 4
@@ -61,10 +64,10 @@ enum
 class SidFile
 {
 private:
-    string moduleName;
-    string authorName;
-    string copyrightInfo;
-    string sidType;
+    std::string moduleName;
+    std::string authorName;
+    std::string copyrightInfo;
+    std::string sidType;
     int numOfSongs;
     int firstSong;
     uint16_t sidVersion;
@@ -94,11 +97,11 @@ private:
 
 public:
     SidFile();
-    int Parse(string file);
-    string GetSidType();
-    string GetModuleName();
-    string GetAuthorName();
-    string GetCopyrightInfo();
+    int Parse(std::string file);
+    std::string GetSidType();
+    std::string GetModuleName();
+    std::string GetAuthorName();
+    std::string GetCopyrightInfo();
     int GetSongSpeed(int songNum);
     int GetNumOfSongs();
     int GetFirstSong();

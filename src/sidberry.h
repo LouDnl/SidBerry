@@ -7,19 +7,29 @@
 #pragma once
 #ifndef SIDBERRY_H
 #define SIDBERRY_H
-#include <iostream>
+#ifndef TERMIWIN_DONOTREDEFINE
 using namespace std;
 #include <signal.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <string.h>
+#include <fcntl.h>
+#include <termios.h>
+// #else
+// #include <include/sys/termios.h>
+// #include "termios.h"
+#else
+#include <conio.h>
+#include <ctype.h>
+#include <WinCon.h>
+// #include <wchar.h>
+#endif
+#include <iostream>
+#include <stdio.h>
+#include <cstring>
 #include <cstdint>
 #include <iomanip>
 #include <bitset>
-#include <fcntl.h>
-#include <termios.h>
-#include <stdio.h>
 
 #include "driver/USBSID.h"
 
@@ -111,11 +121,6 @@ void inthand(int signum);
 /* Handler for a clean exit */
 void exitPlayer(void);
 
-/* Do a single write from the command line to $addr with $byte */
-void SingleWrite(uint16_t addr, uint8_t byte);
-/* Do a single read from the command line from $addr */
-uint8_t SingleRead(uint16_t addr);
-
 /* Main address writing function */
 void MemWrite(uint16_t addr, uint8_t byte);
 /* Main address reading function */
@@ -127,13 +132,8 @@ int load_sid(mos6502 cpu, SidFile sid, int song_number);
 int getch_noecho_special_char(void);
 /* Player state handler */
 void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused, bool *exit, uint8_t *mode_vol_reg, int *song_number, int *sec, int *min);
+
 /* Player setup */
 void USBSIDSetup(void);
-
-/* Deprecated test function */
-void TestWrite(uint16_t addr, uint8_t byte);
-/* Deprecated test function */
-void TestLoop(void);
-
 
 #endif // SIDBERRY_H

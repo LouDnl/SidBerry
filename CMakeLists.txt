@@ -23,28 +23,29 @@ set(COMPILE_OPTS PRIVATE
   -fverbose-asm
 )
 
-### Source files to compile
-set(SOURCEFILES
-  ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/src/SidFile.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/src/mos6502/mos6502.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/src/driver/USBSID.cpp
+# Windows additionals
+if (WIN32)
+set(WIN32_SRC
+  ${CMAKE_CURRENT_LIST_DIR}/src/termiwin/termiWin.c
 )
+set(WIN32_INC
+  ${CMAKE_CURRENT_LIST_DIR}/src/termiwin
+)
+endif (WIN32)
+
 
 # Run the project command
-project(${PROJECT_NAME} C CXX)
+project(${PROJECT_NAME} C CXX ASM)
 
 # the `pkg_check_modules` function is created with this call
 find_package(PkgConfig REQUIRED)
 
 # these calls create special `PkgConfig::<MODULE>` variables
 pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
-if (UNIX)
-pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET udev)
-endif (UNIX)
 
 ### Libraries to link
 if (UNIX)
+pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET udev)
 set(TARGET_LL
   PkgConfig::LIBUSB
   PkgConfig::UDEV
@@ -56,6 +57,14 @@ set(TARGET_LL
 )
 endif (WIN32)
 
+### Source files to compile
+set(SOURCEFILES
+  ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/SidFile.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/mos6502/mos6502.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/driver/USBSID.cpp
+  ${WIN32_SRC}
+)
 ### Header folders to include
 set(TARGET_INCLUDE_DIRS PRIVATE
   .
@@ -63,14 +72,16 @@ set(TARGET_INCLUDE_DIRS PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/src
   ${CMAKE_CURRENT_LIST_DIR}/src/mos6502
   ${CMAKE_CURRENT_LIST_DIR}/src/driver
+  ${WIN32_INC}
   /usr/local/lib
 )
 
-### Project type
-project(${PROJECT_NAME} C CXX ASM)
-
 ### Compile time
 add_executable(${PROJECT_NAME} ${SOURCEFILES})
+
+if (WIN32)
+target_compile_definitions(${PROJECT_NAME} PRIVATE TERMIWIN_DONOTREDEFINE=1)
+endif (WIN32)
 
 target_include_directories(${PROJECT_NAME} ${TARGET_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${TARGET_LL})

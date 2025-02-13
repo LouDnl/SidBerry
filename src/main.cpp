@@ -4,6 +4,10 @@
 // Last update : 2024
 //============================================================================
 
+#ifdef TERMIWIN_DONOTREDEFINE
+#include "winsock2.h"
+#include "windows.h"
+#endif
 #include "mos6502/mos6502.h"
 #include "SidFile.h"
 #include "sidberry.h"
@@ -234,6 +238,7 @@ int load_sid(mos6502 cpu, SidFile sid, int song_number)
 
 int getch_noecho_special_char(void)
 {
+    #ifndef TERMIWIN_DONOTREDEFINE  /* TODO: Finish for Windows! */
     int char_code = 0;
     int buf = 0;
     char buf2[3] = {0, 0, 0};
@@ -275,6 +280,9 @@ int getch_noecho_special_char(void)
     tcsetattr(0, TCSADRAIN, &old);
 
     return buf;
+    #else
+    return 0;
+    #endif
 }
 
 void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused, bool *exit, uint8_t *mode_vol_reg, int *song_number, int *sec, int *min)
