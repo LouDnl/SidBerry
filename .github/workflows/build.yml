@@ -125,7 +125,6 @@ jobs:
             mingw-w64-${{ matrix.arch }}-curl
             mingw-w64-${{ matrix.arch }}-toolchain
             mingw-w64-${{ matrix.arch }}-libusb
-            mingw-w64-${{ matrix.arch }}-libuhd
 
       - name: 📇 Checkout project
         uses: actions/checkout@v4

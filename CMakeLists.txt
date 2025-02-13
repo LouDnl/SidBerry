@@ -39,10 +39,17 @@ pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
 pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET udev)
 
 ### Libraries to link
+if (UNIX)
 set(TARGET_LL
   PkgConfig::LIBUSB
   PkgConfig::UDEV
 )
+endif (UNIX)
+if (WIN32)
+set(TARGET_LL
+  PkgConfig::LIBUSB
+)
+endif (WIN32)
 
 ### Header folders to include
 set(TARGET_INCLUDE_DIRS PRIVATE
