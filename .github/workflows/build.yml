@@ -138,6 +138,8 @@ jobs:
 
       - name: 🏭 Setup CMAKE
         run: |
+          pacman -Ql mingw-w64-${{ matrix.arch }}-pkgconf
+          export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig:/mingw64/share/pkgconfig"
           cmake -G "MinGW Makefiles" -S master -B ${{github.workspace}}/master/build_${{matrix.directory}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ $extra_arg
 
       - name: 🏭 Build ${{matrix.name}}
