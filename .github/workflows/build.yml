@@ -133,10 +133,12 @@ jobs:
           path: master
 
       - name: 🏭 Create build folders
+        shell: msys2 {0}
         run: |
           mkdir -p ${{github.workspace}}/master/build_${{matrix.directory}}
 
       - name: 🏭 Setup CMAKE
+        shell: msys2 {0}
         run: |
           cmake -G "MinGW Makefiles" -S master -B ${{github.workspace}}/master/build_${{matrix.directory}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ $extra_arg
 
@@ -147,20 +149,24 @@ jobs:
           MINGW_INSTALLS=${{ matrix.system }} cmake --build ${{github.workspace}}/master/build_${{matrix.directory}} --config ${{env.BUILD_TYPE}} -j ${{env.BUILD_THREADS}}
 
       - name: List build files
+        shell: msys2 {0}
         run: |
           ls ${{github.workspace}}/master/build_${{matrix.directory}}/usbsidberry -la
 
       - name: 💾 Gather Artifact Files
+        shell: msys2 {0}
         working-directory: ${{github.workspace}}/master
         run: |
           mkdir dist
           cp -av build_${{matrix.directory}}/usbsidberry dist/${{matrix.filename}}
 
       - name: Get current branch
+        shell: msys2 {0}
         run: |
           echo "BRANCHNAME=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
 
       - name: Get current datetime
+        shell: msys2 {0}
         run: |
           echo "DATETIME=$(date +'%Y%m%dT%H%M%S')" >> $GITHUB_ENV
 
