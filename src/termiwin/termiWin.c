@@ -426,7 +426,7 @@ int cfsetspeed(struct termios* termios_p, speed_t speed) {
 ssize_t read_serial(int fd, char* buffer, size_t count) {
 
   if (fd != com.fd) return -1;
-  int rc = 0;
+  long unsigned int rc = 0;
   int ret;
 
   ret = ReadFile(com.hComm, buffer, count, &rc, NULL);
