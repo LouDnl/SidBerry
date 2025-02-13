@@ -1,9 +1,6 @@
 ### Cmake minimum version
 cmake_minimum_required(VERSION 3.17)
 
-# the `pkg_check_modules` function is created with this call
-find_package(PkgConfig REQUIRED)
-
 ### Cmake compiler standard versions
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -34,7 +31,11 @@ set(SOURCEFILES
   ${CMAKE_CURRENT_LIST_DIR}/src/driver/USBSID.cpp
 )
 
+# Run the project command
 project(${PROJECT_NAME} C CXX)
+
+# the `pkg_check_modules` function is created with this call
+find_package(PkgConfig REQUIRED)
 
 # these calls create special `PkgConfig::<MODULE>` variables
 pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
