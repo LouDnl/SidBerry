@@ -121,6 +121,7 @@ jobs:
             git
             mingw-w64-${{ matrix.arch }}-cmake
             mingw-w64-${{ matrix.arch }}-make
+            mingw-w64-${{ matrix.arch }}-pkg-config
             mingw-w64-${{ matrix.arch }}-curl
             mingw-w64-${{ matrix.arch }}-pkg-config
             mingw-w64-${{ matrix.arch }}-toolchain
