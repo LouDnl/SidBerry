@@ -30,6 +30,8 @@ using namespace std;
 #include <cstdint>
 #include <iomanip>
 #include <bitset>
+#include <chrono>
+#include <thread>
 
 #include "driver/USBSID.h"
 

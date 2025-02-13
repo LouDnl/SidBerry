@@ -648,7 +648,8 @@ int main(int argc, char *argv[])
         while (paused)
         {
             change_player_status(cpu, sid, getch_noecho_special_char(), &paused, &exit, &mode_vol_reg, &song_number, &sec, &min);
-            usleep(100000);
+            /* usleep(100000); */
+            std::this_thread::sleep_for(std::chrono::microseconds(100000));
         }
 
         gettimeofday(&t1, NULL);
@@ -674,7 +675,8 @@ int main(int argc, char *argv[])
         else
             elaps = clock_speed - t1.tv_usec + t2.tv_usec;
         if (elaps < refresh_rate /* frame_cycles */) {
-            usleep(refresh_rate /* frame_cycles */ - elaps); // 50Hz refresh rate is 20us
+            // usleep(refresh_rate /* frame_cycles */ - elaps); // 50Hz refresh rate is 20us
+            std::this_thread::sleep_for(std::chrono::microseconds(refresh_rate - elaps));
         }
         time_unit++;
         frames = (cyclecount / refresh_rate);
