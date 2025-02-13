@@ -130,32 +130,30 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          path: master
 
       - name: 🏭 Create build folders
         shell: msys2 {0}
         run: |
-          mkdir -p ${{github.workspace}}/master/build_${{matrix.directory}}
+          mkdir -p build_${{matrix.directory}}
 
       - name: 🏭 Setup CMAKE
         shell: msys2 {0}
         run: |
-          cmake -G "MinGW Makefiles" -S master -B ${{github.workspace}}/master/build_${{matrix.directory}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ $extra_arg
+          cmake -G "MinGW Makefiles" -S . -B build_${{matrix.directory}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ $extra_arg
 
       - name: 🏭 Build ${{matrix.name}}
         id: build
         shell: msys2 {0}
         run: |
-          MINGW_INSTALLS=${{ matrix.system }} cmake --build ${{github.workspace}}/master/build_${{matrix.directory}} --config ${{env.BUILD_TYPE}} -j ${{env.BUILD_THREADS}}
+          MINGW_INSTALLS=${{ matrix.system }} cmake --build build_${{matrix.directory}} --config ${{env.BUILD_TYPE}} -j ${{env.BUILD_THREADS}}
 
       - name: List build files
         shell: msys2 {0}
         run: |
-          ls ${{github.workspace}}/master/build_${{matrix.directory}}/usbsidberry -la
+          ls build_${{matrix.directory}}/usbsidberry -la
 
       - name: 💾 Gather Artifact Files
         shell: msys2 {0}
-        working-directory: ${{github.workspace}}/master
         run: |
           mkdir dist
           cp -av build_${{matrix.directory}}/usbsidberry dist/${{matrix.filename}}
@@ -174,4 +172,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{matrix.name}}-${{env.BRANCHNAME}}-autobuild-${{github.run_number}}-${{env.DATETIME}}
-          path: ${{github.workspace}}/master/dist
+          path: dist
