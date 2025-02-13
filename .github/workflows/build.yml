@@ -1,0 +1,93 @@
+name: USBSIDBerry Build
+
+env:
+  BUILD_THREADS: 4
+  BUILD_TYPE: Release
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - ".github/workflows/build.yml"
+      - "CMakeLists.txt"
+    # Only run on dev branch
+    branches: [dev]
+  # Allows you to run this workflow manually from the Actions tab when needed
+  workflow_dispatch:
+
+jobs:
+  build_deb:
+    name: Build
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {
+              name: USBSIDBerry,
+              directory: usbsidberry,
+            }
+    steps:
+      - shell: bash
+        run: git config --global core.autocrlf input
+
+      - name: 🛠️ Install Act dependencies
+        if: ${{ env.ACT }}
+        run: |
+          apt-get update && apt-get install sudo -y
+
+      - name: 🛠️ Install dependencies
+        if: ${{ env.ACT }}
+        run: |
+          sudo apt-get update && sudo apt-get install curl build-essential cmake -y
+
+      - name: 🛠️ Install SidBerry dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0 \
+                              libusb-1.0-0-dev \
+                              libusb-dev \
+                              udev
+
+      - name: 📇 Checkout project
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          path: master
+
+      - name: 🏭 Create build folders
+        run: |
+          mkdir -p ${{github.workspace}}/master/build_${{matrix.directory}}
+
+      - name: 🏭 Setup CMAKE
+        run: |
+          cmake -S master -B ${{github.workspace}}/master/build_${{matrix.directory}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} $extra_arg
+
+      - name: 🏭 Build ${{matrix.name}}
+        run: |
+          cmake --build ${{github.workspace}}/master/build_${{matrix.directory}} --config ${{env.BUILD_TYPE}} -j ${{env.BUILD_THREADS}}
+
+      - name: List build files
+        run: |
+          ls ${{github.workspace}}/master/build_${{matrix.directory}}/usbsidberry -la
+
+      - name: 💾 Gather Artifact Files
+        working-directory: ${{github.workspace}}/master
+        run: |
+          mkdir dist
+          cp -av build_${{matrix.directory}}/usbsidberry dist/
+
+      - name: Get current branch
+        run: |
+          echo "BRANCHNAME=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+
+      - name: Get current datetime
+        run: |
+          echo "DATETIME=$(date +'%Y%m%dT%H%M%S')" >> $GITHUB_ENV
+
+      - name: 💾 Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: usbsidberry-${{env.BRANCHNAME}}-autobuild-${{github.run_number}}-${{env.DATETIME}}
+          path: ${{github.workspace}}/master/dist
