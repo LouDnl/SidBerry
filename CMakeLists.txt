@@ -36,7 +36,9 @@ set(SOURCEFILES
 
 # these calls create special `PkgConfig::<MODULE>` variables
 pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
+if (UNIX)
 pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET udev)
+endif (UNIX)
 
 ### Libraries to link
 if (UNIX)
