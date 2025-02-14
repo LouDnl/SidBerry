@@ -81,7 +81,7 @@ jobs:
       - name: 💾 Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: releasebuild-usbsidberrywin
+          name: releasebuild-usbsidberry
           path: ${{github.workspace}}/master/dist
 
   build_win:
@@ -162,8 +162,8 @@ jobs:
       - name: 💾 Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: releasebuild-usbsidberry
-          path: ${{github.workspace}}/master/dist
+          name: releasebuild-usbsidberrywin
+          path: dist
 
   release:
     name: Create release files
