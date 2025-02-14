@@ -1,4 +1,4 @@
-name: USBSIDBerry Build
+name: USBSIDBerry Release
 
 env:
   BUILD_THREADS: 4
@@ -6,14 +6,10 @@ env:
 
 on:
   push:
-    paths:
-      - "src/**"
-      - ".github/workflows/build.yml"
-      - "CMakeLists.txt"
     # Only run on dev branch
-    branches: [dev]
-  # Allows you to run this workflow manually from the Actions tab when needed
-  workflow_dispatch:
+    branches: [master]
+    tags:
+      - "*"
 
 # CMake info: https://www.msys2.org/docs/cmake/
 jobs:
@@ -85,7 +81,7 @@ jobs:
       - name: 💾 Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{matrix.name}}-${{env.BRANCHNAME}}-autobuild-${{github.run_number}}-${{env.DATETIME}}
+          name: releasebuild-usbsidberrywin
           path: ${{github.workspace}}/master/dist
 
   build_win:
@@ -166,5 +162,72 @@ jobs:
       - name: 💾 Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{matrix.name}}-${{env.BRANCHNAME}}-autobuild-${{github.run_number}}-${{env.DATETIME}}
-          path: dist
+          name: releasebuild-usbsidberry
+          path: ${{github.workspace}}/master/dist
+
+  release:
+    name: Create release files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: [build_dev, build_win]
+    # job will only start if there is a new tag
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Branch latest
+        id: branch_name
+        run: |
+          echo "IS_TAG=${{ startsWith(github.ref, 'refs/tags/') }}" >> $GITHUB_OUTPUT
+          echo "SOURCE_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+
+      - name: 📇 Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # path: master
+
+      - name: Generate release notes
+        env:
+          IS_TAG: ${{ steps.branch_name.outputs.IS_TAG }}
+          SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
+        if: "${{ env.IS_TAG == 'true' }}"
+        id: release-notes
+        run: |
+          echo "**Commits in this release:**" > release_notes.md
+          git log $(git tag --sort version:refname | tail -n 2 | head -n 1)..HEAD --oneline >> release_notes.md
+
+      - name: Download all archived artifacts
+        env:
+          IS_TAG: ${{ steps.branch_name.outputs.IS_TAG }}
+          SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
+        if: "${{ env.IS_TAG == 'true' }}"
+        uses: actions/download-artifact@v4 # https://github.com/actions/download-artifact
+        with:
+          path: release
+          pattern: releasebuild-usbsidberry*
+          merge-multiple: true
+
+      - name: View folder content
+        env:
+          IS_TAG: ${{ steps.branch_name.outputs.IS_TAG }}
+          SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
+        if: "${{ env.IS_TAG == 'true' }}"
+        run: ls -R
+
+      - name: Create tagged release
+        id: create_release
+        env:
+          IS_TAG: ${{ steps.branch_name.outputs.IS_TAG }}
+          SOURCE_TAG: ${{ steps.branch_name.outputs.SOURCE_TAG }}
+        if: "${{ env.IS_TAG == 'true' }}"
+        uses: ncipollo/release-action@v1 # https://github.com/ncipollo/release-action
+        with:
+          tag: ${{ env.SOURCE_TAG }}
+          name: ${{ env.SOURCE_TAG }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "release/usbsidberry*"
+          prerelease: false
+          removeArtifacts: true
+          generateReleaseNotes: true
+          bodyFile: "release_notes.md"
