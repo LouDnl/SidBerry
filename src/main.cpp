@@ -17,6 +17,7 @@
 uint8_t memory[65536];         // init 64K ram
 int sidcount = 1;              // default to 1 sid
 int sidno;
+int fmoplsidno = -1;
 uint16_t sidone, sidtwo, sidthree, sidfour;
 int custom_clock = 0;          // default custom clock to 0
 int custom_hertz = 0;          // default custom hertz to 0
@@ -56,6 +57,15 @@ void inthand(int signum)
 
 uint8_t addr_translation(uint16_t addr)
 {
+    if (addr == 0xDF40 || addr == 0xDF50) {
+        if (fmoplsidno >= 1 && fmoplsidno <=4) {
+            sidno = fmoplsidno;
+            return (((sidno - 1) * 0x20) + (addr & 0x1F));
+        } else {
+            sidno = 5; /* Skip */
+            return (0x80 + (addr & 0x1F)); /* Out of scope address */
+        }
+    }
     switch (sidcount) {
         case 1: /* Easy just return the address */
             if (addr >= sidone && addr < (sidone + 0x20)) {
@@ -611,6 +621,8 @@ int main(int argc, char *argv[])
     if(us_sid->USBSID_GetNumSIDs() < sidcount) {
         printf("[WARNING] Tune no.sids %d is higher then USBSID-Pico no.sids %d\n", sidcount, us_sid->USBSID_GetNumSIDs());
     }
+
+    fmoplsidno = us_sid->USBSID_GetFMOplSID();
 
     srand(0);
     mos6502 cpu(MemRead, MemWrite);
