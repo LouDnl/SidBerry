@@ -18,6 +18,8 @@ uint8_t memory[65536];         // init 64K ram
 int sidcount = 1;              // default to 1 sid
 int sidno;
 int fmoplsidno = -1;
+int pcbversion = -1;
+
 uint16_t sidone, sidtwo, sidthree, sidfour;
 int custom_clock = 0;          // default custom clock to 0
 int custom_hertz = 0;          // default custom hertz to 0
@@ -45,8 +47,7 @@ void exitPlayer(void)
             MemWrite((i + (j * 0x20)), 0);
         }
     }
-    us_sid->USBSID_Close();
-    delete us_sid;
+    delete us_sid;  /* Executes us_sid->USBSID_Close(); */
 }
 
 void inthand(int signum)
@@ -347,6 +348,12 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
             MemWrite((VOL_ADDR + (i * 0x20)), *mode_vol_reg);
         }
     }
+    else if (key_press == 91 || key_press == (int)'a')  // 91 A
+    {
+        if (pcbversion == 13) {
+            us_sid->USBSID_ToggleStereo();
+        }
+    }
     else if (key_press == (int)'v')
     {
         verbose = !verbose;
@@ -623,6 +630,7 @@ int main(int argc, char *argv[])
     }
 
     fmoplsidno = us_sid->USBSID_GetFMOplSID();
+    pcbversion = us_sid->USBSID_GetPCBVersion();
 
     srand(0);
     mos6502 cpu(MemRead, MemWrite);
@@ -649,6 +657,9 @@ int main(int argc, char *argv[])
     cout << "V           : Verbose (show SID registers) " << endl;
     cout << "W           : Volume up " << endl;
     cout << "S           : Volume down " << endl;
+    if (pcbversion == 13) {
+        cout << "A           : Toggle mono/stereo " << endl;
+    }
     cout << "Q or Escape : Quit " << endl
          << endl;
 
