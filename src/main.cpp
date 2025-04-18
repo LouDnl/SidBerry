@@ -17,6 +17,9 @@
 uint8_t memory[65536];         // init 64K ram
 int sidcount = 1;              // default to 1 sid
 int sidno;
+int fmoplsidno = -1;
+int pcbversion = -1;
+
 uint16_t sidone, sidtwo, sidthree, sidfour;
 int custom_clock = 0;          // default custom clock to 0
 int custom_hertz = 0;          // default custom hertz to 0
@@ -44,8 +47,7 @@ void exitPlayer(void)
             MemWrite((i + (j * 0x20)), 0);
         }
     }
-    us_sid->USBSID_Close();
-    delete us_sid;
+    delete us_sid;  /* Executes us_sid->USBSID_Close(); */
 }
 
 void inthand(int signum)
@@ -56,6 +58,15 @@ void inthand(int signum)
 
 uint8_t addr_translation(uint16_t addr)
 {
+    if (addr == 0xDF40 || addr == 0xDF50) {
+        if (fmoplsidno >= 1 && fmoplsidno <=4) {
+            sidno = fmoplsidno;
+            return (((sidno - 1) * 0x20) + (addr & 0x1F));
+        } else {
+            sidno = 5; /* Skip */
+            return (0x80 + (addr & 0x1F)); /* Out of scope address */
+        }
+    }
     switch (sidcount) {
         case 1: /* Easy just return the address */
             if (addr >= sidone && addr < (sidone + 0x20)) {
@@ -337,6 +348,12 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
             MemWrite((VOL_ADDR + (i * 0x20)), *mode_vol_reg);
         }
     }
+    else if (key_press == 91 || key_press == (int)'a')  // 91 A
+    {
+        if (pcbversion == 13) {
+            us_sid->USBSID_ToggleStereo();
+        }
+    }
     else if (key_press == (int)'v')
     {
         verbose = !verbose;
@@ -612,6 +629,9 @@ int main(int argc, char *argv[])
         printf("[WARNING] Tune no.sids %d is higher then USBSID-Pico no.sids %d\n", sidcount, us_sid->USBSID_GetNumSIDs());
     }
 
+    fmoplsidno = us_sid->USBSID_GetFMOplSID();
+    pcbversion = us_sid->USBSID_GetPCBVersion();
+
     srand(0);
     mos6502 cpu(MemRead, MemWrite);
 
@@ -637,6 +657,9 @@ int main(int argc, char *argv[])
     cout << "V           : Verbose (show SID registers) " << endl;
     cout << "W           : Volume up " << endl;
     cout << "S           : Volume down " << endl;
+    if (pcbversion == 13) {
+        cout << "A           : Toggle mono/stereo " << endl;
+    }
     cout << "Q or Escape : Quit " << endl
          << endl;
 

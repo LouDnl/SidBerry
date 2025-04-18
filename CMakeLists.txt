@@ -74,6 +74,9 @@ set(TARGET_INCLUDE_DIRS PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/src/driver
   ${WIN32_INC}
   /usr/local/lib
+  /usr/local/include
+  /usr/lib
+  /usr/include
 )
 
 ### Compile time
