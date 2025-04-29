@@ -116,8 +116,12 @@ uint8_t addr_translation(uint16_t addr)
     return 0xFE;
 }
 
-void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
+uint16_t last_raddr, last_waddr;
+uint8_t last_byte;
+void MemWrite(uint16_t addr, uint8_t byte)
 {
+    last_waddr = addr;
+    last_byte = byte;
     if (addr >= 0xD400 && addr <= 0xD5FF || addr >= 0xDE00 && addr <= 0xDFFF)
     {
         // access to SID chip
@@ -152,6 +156,7 @@ void MemWrite(uint16_t addr, uint8_t byte)  // NOTICE: USB devices only
 
 uint8_t MemRead(uint16_t addr)
 {
+    last_raddr = addr;
     /* printf("[R]$%04x $%02x\r\n", addr, memory[addr]); */
     if (addr >= 0xD400 && addr <= 0xDFFF) // address decoding logic
     {
