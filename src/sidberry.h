@@ -92,26 +92,18 @@ enum scanline_cycles
   C64_NTSC_SCANLINE_CYCLES = 65
 };
 
+enum CIA1_registers
+{ /* https://www.c64-wiki.com/wiki/CIA */
+  CIA_TIMER_LO = 0xDC04,
+  CIA_TIMER_HI = 0xDC05,
+};
+
 static const enum clock_speeds clockSpeed[] = {UNKNOWN, PAL, NTSC, BOTH, DREAN};
 static const enum refresh_rates refreshRate[] = {DEFAULT, EU, US, GLOBAL};
 static const enum scan_lines scanLines[] = {C64_PAL_SCANLINES, C64_NTSC_SCANLINES};
 static const enum scanline_cycles scanlinesCycles[] = {C64_PAL_SCANLINE_CYCLES, C64_NTSC_SCANLINE_CYCLES};
 const char *chiptype[4] = {"Unknown", "MOS6581", "MOS8580", "MOS6581 and MOS8580"};
 const char *clockspeed[5] = {"Unknown", "PAL", "NTSC", "PAL and NTSC", "DREAN"};
-
-extern timeval t1, t2;
-extern long int elaps;
-extern int custom_clock;
-extern int custom_hertz;
-extern int volume;
-extern int clock_speed;
-extern int refresh_rate;
-extern bool verbose;
-extern bool trace;
-extern bool calculatedclock;
-extern bool calculatedhz;
-extern bool real_read;
-extern volatile sig_atomic_t stop;
 
 /* USBSID Specific */
 USBSID_NS::USBSID_Class* us_sid;

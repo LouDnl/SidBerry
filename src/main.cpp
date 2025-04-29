@@ -32,7 +32,7 @@ bool calculatedclock = false;  // init calculated clock speed boolean
 bool calculatedhz = false;     // init calculated refresh boolean
 volatile sig_atomic_t stop;    // init variable for ctrl+c
 bool real_read = true;         // use actual pin reading when USBSID-Pico
-timeval t1, t2;
+timeval t1, t2, t3, t4;
 long int elaps;
 
 uint64_t cyclecount;
@@ -190,6 +190,22 @@ uint8_t MemRead(uint16_t addr)
         }
     }
     return memory[addr];
+}
+
+void CycleFn(mos6502* cpu)
+{
+    if(1) return;
+    printf("[PC]%04X [S]%02X [P]%02X [A]%02X [X]%02X [Y]%02X [W]%04X:%02X [R]%04X\n",
+        cpu->GetPC(),
+        cpu->GetS(),
+        cpu->GetP(),
+        cpu->GetA(),
+        cpu->GetX(),
+        cpu->GetY(),
+        last_waddr, last_byte,
+        last_raddr
+    );
+    return;
 }
 
 int load_sid(mos6502 cpu, SidFile sid, int song_number)
@@ -591,7 +607,8 @@ int main(int argc, char *argv[])
     cout << "Init Address       : $" << hex << sid.GetInitAddress() << endl;
     cout << "Play Address       : $" << hex << sid.GetPlayAddress() << endl;
     cout << "---------------------------------------------" << endl;
-    cout << "Song Speed(s)      : $" << hex << curr_sidspeed << " $0x" << hex << sidflags << " 0b" << bitset<32>{sidflags} << endl;  // BUG: Always 0x24 !?
+    cout << "Song Speed(s)      : $" << hex << curr_sidspeed << " $0x" << hex << sidspeed << " 0b" << bitset<32>{sidspeed} << endl;
+    cout << "Timer              : " << (curr_sidspeed == 1 ? "CIA1" : "Clock") << endl;
     cout << "Selected Sub-Song  : " << dec << song_number + 1 << " / " << dec << sid.GetNumOfSongs() << endl;
 
     sidcount =
@@ -633,9 +650,8 @@ int main(int argc, char *argv[])
     pcbversion = us_sid->USBSID_GetPCBVersion();
 
     srand(0);
-    mos6502 cpu(MemRead, MemWrite);
+    mos6502 cpu(MemRead, MemWrite, CycleFn);
 
-    int time_unit = 0;
     int sec = 0;
     int min = 0;
 
@@ -665,13 +681,21 @@ int main(int argc, char *argv[])
 
     printf("\rPlay Sub-Song %d / %d [%02d:%02d] @ Volume: %d            ", song_number + 1, sid.GetNumOfSongs(), min, sec, volume);
     fflush(stdout);
+
+    int play_rate = 0;
+    if (curr_sidspeed == 1) {
+        play_rate = (memory[CIA_TIMER_HI] << 8 | memory[CIA_TIMER_LO]);  /* CIA timing */
+        // printf("\n%d %d %d\n", play_rate, memory[0xDC04] + memory[0xDC05] * 256, memory[0xDC05] << 8 | memory[0xDC04]);
+    } else {
+        play_rate = refresh_rate;
+    }
+
     while (!exit || !stop)
     {
 
         while (paused)
         {
             change_player_status(cpu, sid, getch_noecho_special_char(), &paused, &exit, &mode_vol_reg, &song_number, &sec, &min);
-            /* usleep(100000); */
             std::this_thread::sleep_for(std::chrono::microseconds(100000));
         }
 
@@ -689,6 +713,7 @@ int main(int argc, char *argv[])
 
         // execute the player routine
         cpu.RunN(0, cyclecount);
+        // cpu.Run(1, cyclecount, cpu.CYCLE_COUNT); // 100000 clockcycles
 
         gettimeofday(&t2, NULL);
 
@@ -697,13 +722,12 @@ int main(int argc, char *argv[])
             elaps = t2.tv_usec - t1.tv_usec;
         else
             elaps = clock_speed - t1.tv_usec + t2.tv_usec;
-        if (elaps < refresh_rate /* frame_cycles */) {
-            // usleep(refresh_rate /* frame_cycles */ - elaps); // 50Hz refresh rate is 20us
-            std::this_thread::sleep_for(std::chrono::microseconds(refresh_rate - elaps));
+        if (elaps < play_rate /* frame_cycles */) {
+            std::this_thread::sleep_for(std::chrono::microseconds(play_rate - elaps));
         }
-        time_unit++;
-        frames = (cyclecount / refresh_rate);
-        if (time_unit % 50 == 0)
+        frames = (cyclecount / play_rate);  // TODO: Add this for cycle exact writes
+        gettimeofday(&t3, NULL);
+        if (t3.tv_sec != t4.tv_sec)
         {
             sec++;
             if (sec == 60)
@@ -717,6 +741,7 @@ int main(int argc, char *argv[])
                 fflush(stdout);
             }
         }
+        gettimeofday(&t4, NULL);
     }
 
     return 0;
