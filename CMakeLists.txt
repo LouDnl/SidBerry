@@ -41,19 +41,19 @@ project(${PROJECT_NAME} C CXX ASM)
 find_package(PkgConfig REQUIRED)
 
 # these calls create special `PkgConfig::<MODULE>` variables
-pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
+pkg_check_modules(libusb REQUIRED IMPORTED_TARGET libusb-1.0)
 
 ### Libraries to link
 if (UNIX)
-pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET udev)
+pkg_check_modules(udev REQUIRED IMPORTED_TARGET libudev)
 set(TARGET_LL
-  PkgConfig::LIBUSB
-  PkgConfig::UDEV
+  PkgConfig::libusb
+  PkgConfig::udev
 )
 endif (UNIX)
 if (WIN32)
 set(TARGET_LL
-  PkgConfig::LIBUSB
+  PkgConfig::libusb
 )
 endif (WIN32)
 
