@@ -44,6 +44,7 @@ jobs:
                               libusb-1.0-0 \
                               libusb-1.0-0-dev \
                               libusb-dev \
+                              libudev-dev \
                               udev
 
       - name: 📇 Checkout project
