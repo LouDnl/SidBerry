@@ -106,6 +106,7 @@ void inthand(int signum)
     exitPlayer();
 }
 
+#if defined(UNIX_COMPILE)
 void open_serialport(void)
 {
     // fd = open(USBSIDSerial, /* O_RDWR */ O_WRONLY | O_NOCTTY | O_NONBLOCK);
@@ -182,13 +183,16 @@ void open_serialport(void)
     ioctl(serial_port, TCSETS2, &tty);
 
 }
+#endif
 
+#if defined(UNIX_COMPILE)
 int serial_write_chars(unsigned char * data, size_t size)
 {
     us_Out = write(serial_port, data, size);
     /* printf("[%d] %02X %02X %02X\n",us_Out,data[0],data[1],data[2]); */
     return us_Out;
 }
+#endif
 
 uint8_t addr_translation(uint16_t addr)
 {
