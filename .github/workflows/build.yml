@@ -41,6 +41,7 @@ jobs:
           sudo apt install -y curl \
                               build-essential \
                               cmake \
+                              alsa \
                               libusb-1.0-0 \
                               libusb-1.0-0-dev \
                               libusb-dev \
