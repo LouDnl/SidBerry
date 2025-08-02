@@ -100,6 +100,7 @@ endif (UNIX)
 if (WIN32)
 target_compile_definitions(${PROJECT_NAME} PRIVATE TERMIWIN_DONOTREDEFINE=1)
 target_compile_definitions(${PROJECT_NAME} PRIVATE WINDOWS_COMPILE)
+target_compile_definitions(${PROJECT_NAME} PRIVATE __WINDOWS_MM__)
 endif (WIN32)
 
 target_include_directories(${PROJECT_NAME} ${TARGET_INCLUDE_DIRS})
