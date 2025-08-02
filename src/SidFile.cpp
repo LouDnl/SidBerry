@@ -39,7 +39,10 @@ bool SidFile::IsPSIDHeader(const uint8_t *p)
     uint32_t id = Read32(p, SIDFILE_PSID_ID);
     uint16_t version = Read16(p, SIDFILE_PSID_VERSION_H);
     /* Add v3 Dual SID, v4 Triple SID, v5 Quad SID file support */
-    return id == 0x50534944 && (version >= 1 || version <= 4);
+    // 0x50534944  // PSID
+    // 0x52534944  // RSID
+    return /* id == 0x50534944 && */ (version >= 1 || version <= 4);
+
 }
 
 int SidFile::Parse(std::string file)
@@ -168,10 +171,15 @@ int SidFile::Parse(std::string file)
 
     startPage = Read8(header, SIDFILE_PSID_STARTPAGE);
     pageLength = Read8(header, SIDFILE_PSID_PAGELENGTH);
-    if (sidVersion == 3 || sidVersion == 4 || sidVersion == 78) {
+    if (sidVersion == 3 || sidVersion == 4) {
         secondSID = Read8(header, SIDFILE_PSID_SECONDSID);
         thirdSID = Read8(header, SIDFILE_PSID_THIRDSID);
-        fourthSID = Read8(header, SIDFILE_PSID_FOURTHSID);
+    }
+    if (sidVersion == 78) {
+        /* Flipped these addresses around to make it sound better */
+        secondSID = Read8(header, SIDFILEPLUS_PSID_SECONDSID);
+        thirdSID = Read8(header, SIDFILEPLUS_PSID_THIRDSID);
+        fourthSID = Read8(header, SIDFILEPLUS_PSID_FOURTHSID);
     }
 
     fclose(f);
