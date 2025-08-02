@@ -58,10 +58,11 @@ set(TARGET_LL
 )
 endif (UNIX)
 if (WIN32)
-pkg_check_modules(asound REQUIRED IMPORTED_TARGET libwinmm)
+#pkg_check_modules(asound REQUIRED IMPORTED_TARGET libwinmm)
 set(TARGET_LL
   PkgConfig::libusb
-  PkgConfig::libwinmm
+  #PkgConfig::libwinmm
+  -lwinmm
 )
 endif (WIN32)
 
