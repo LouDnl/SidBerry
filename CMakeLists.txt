@@ -58,8 +58,10 @@ set(TARGET_LL
 )
 endif (UNIX)
 if (WIN32)
+pkg_check_modules(asound REQUIRED IMPORTED_TARGET libwinmm)
 set(TARGET_LL
   PkgConfig::libusb
+  PkgConfig::libwinmm
 )
 endif (WIN32)
 
@@ -100,7 +102,7 @@ endif (UNIX)
 if (WIN32)
 target_compile_definitions(${PROJECT_NAME} PRIVATE TERMIWIN_DONOTREDEFINE=1)
 target_compile_definitions(${PROJECT_NAME} PRIVATE WINDOWS_COMPILE)
-target_compile_definitions(${PROJECT_NAME} PRIVATE __WINDOWS_MM__)
+#target_compile_definitions(${PROJECT_NAME} PRIVATE __WINDOWS_MM__)
 endif (WIN32)
 
 target_include_directories(${PROJECT_NAME} ${TARGET_INCLUDE_DIRS})
