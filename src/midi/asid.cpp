@@ -57,7 +57,7 @@ std::vector<unsigned char> basic_message;
 void list_ports(void)
 {
     RtMidiOut *l_midiout = new RtMidiOut();
-    uint nPorts = l_midiout->getPortCount();
+    unsigned int nPorts = l_midiout->getPortCount();
     printf( "[ASID] Available ports: %u\n", nPorts);
     std::string portName;
     for(int i = 0; i < nPorts; i++) {
