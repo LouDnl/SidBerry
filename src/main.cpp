@@ -10,6 +10,7 @@
 #endif
 
 /* Serial port stuffs */
+#if defined(UNIX_COMPILE)
 #define termios asmtermios
 #define winsize asmwinsize
 #define termio asmtermio
@@ -20,6 +21,7 @@
 #include <asm-generic/termbits.h>
 #include <sys/ioctl.h> // Used for TCGETS2/TCSETS2, which is required for custom baud rates
 #include <unistd.h>
+#endif
 
 #include "mos6502/mos6502.h"
 #include "SidFile.h"
@@ -51,10 +53,12 @@ bool use_serial = false;       // use direct serial connection to write to USBSI
 bool use_usbsid = false;       // use USB to write to USBSID-Pico
 
 /* Serial stuffs */
+#if defined(UNIX_COMPILE)
 #define BAUD_RATE 921600
 const char *defaultserialport = "/dev/ttyAMA5";
 char USBSIDSerial[13]; /* 12 chars long (still testing) */
 int us_Out, serial_port;
+#endif
 
 bool calculatedclock = false;  // init calculated clock speed boolean
 bool calculatedhz = false;     // init calculated refresh boolean
@@ -73,7 +77,9 @@ void sendSIDEnvironment(bool isPAL);
 void sendSIDType(bool is6581);
 int asid_dump(unsigned short addr, unsigned char byte, int sidno);
 int asid_flush(void);
+#if defined(UNIX_COMPILE)
 int serial_write_chars(unsigned char * data, size_t size);
+#endif
 
 void exitPlayer(void)
 {
@@ -85,11 +91,13 @@ void exitPlayer(void)
     }
     if (use_usbsid) delete us_sid;  /* Executes us_sid->USBSID_Close(); */
     if (use_asid) asid_close();
+    #if defined(UNIX_COMPILE)
     if (use_serial) {
 	unsigned char buffer[4] = {0xFF,0xFF,0xFF,0xFF};
         serial_write_chars(buffer,4);
         close(serial_port);
     }
+    #endif
 }
 
 void inthand(int signum)
@@ -277,6 +285,7 @@ void MemWrite(uint16_t addr, uint8_t byte)
         // if (use_usbsid) us_sid->USBSID_WriteRing(phyaddr, byte);
         // if (use_usbsid) us_sid->USBSID_WriteRingCycled(phyaddr, byte, (c1.tv_usec - c2.tv_usec));
         if (use_asid) asid_dump(phyaddr, byte, sidno);
+        #if defined(UNIX_COMPILE)
         if (use_serial && !use_cycles) {
             unsigned char serialbuffer[2] = {
                 phyaddr, byte
@@ -289,6 +298,7 @@ void MemWrite(uint16_t addr, uint8_t byte)
             };
             serial_write_chars(serialbuffer, 4);
         }
+        #endif
 
         if (verbose && trace)
         {
@@ -641,6 +651,7 @@ int main(int argc, char *argv[])
             list_ports();
             return 0;
         }
+        #if defined(UNIX_COMPILE)
         else if (!strcmp(argv[param_count], "-serial") || !strcmp(argv[param_count], "--use-serial"))
         {
             use_asid = false;
@@ -660,6 +671,7 @@ int main(int argc, char *argv[])
             }
             fprintf(stdout, "Using serial port: %s\n", USBSIDSerial);
         }
+        #endif
         else if (!strcmp(argv[param_count], "-asid") || !strcmp(argv[param_count], "--use-asid"))
         {
             use_asid = true;
@@ -908,17 +920,19 @@ int main(int argc, char *argv[])
         sendSIDType((ct == 1));
     }
 
+    #if defined(UNIX_COMPILE)
     if (use_serial) {
         open_serialport();
-	uint8_t packet_size = (use_cycles ? 0x04 : 0x02);
+	    uint8_t packet_size = (use_cycles ? 0x04 : 0x02);
         uint8_t initpacket[8] = {
-	0xFF,0xEE,0xDD,
-        0x00, // packet size high byte
-        packet_size, // packet size low byte
-	0xDD,0xEE,0xFF
-	};
-	serial_write_chars(initpacket,8);
+	        0xFF,0xEE,0xDD,
+            0x00, // packet size high byte
+            packet_size, // packet size low byte
+	        0xDD,0xEE,0xFF
+	    };
+	    serial_write_chars(initpacket,8);
     }
+    #endif
 
     srand(0);
     mos6502 cpu(MemRead, MemWrite, CycleFn);
