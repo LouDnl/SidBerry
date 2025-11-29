@@ -70,7 +70,7 @@ void list_ports(void)
 int asid_init(char *param, int no_sids)
 {
     nosids = no_sids;
-    printf("[ASID DBG][param]%s[no_sids]%d\n", param, nosids);
+    /* printf("[ASID DBG][param]%s[no_sids]%d\n", param, nosids); */
     /* No stereo capability. */
     int channels = 1;
     int i, nports, asidport = 0;
