@@ -41,7 +41,9 @@ jobs:
           sudo apt install -y curl \
                               build-essential \
                               cmake \
+                              libasound-dev \
                               libasound2-dev \
+                              libasound2-data \
                               libusb-1.0-0 \
                               libusb-1.0-0-dev \
                               libusb-dev \
