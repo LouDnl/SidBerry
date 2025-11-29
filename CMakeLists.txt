@@ -71,7 +71,7 @@ set(SOURCEFILES
   ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/SidFile.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/mos6502/mos6502.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/src/driver/USBSID.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/driver/src/USBSID.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/midi/RtMidi.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/midi/asid.cpp
   ${WIN32_SRC}
@@ -82,7 +82,7 @@ set(TARGET_INCLUDE_DIRS PRIVATE
   src
   ${CMAKE_CURRENT_LIST_DIR}/src
   ${CMAKE_CURRENT_LIST_DIR}/src/mos6502
-  ${CMAKE_CURRENT_LIST_DIR}/src/driver
+  ${CMAKE_CURRENT_LIST_DIR}/src/driver/src
   ${CMAKE_CURRENT_LIST_DIR}/src/midi
   ${WIN32_INC}
   /usr/local/lib

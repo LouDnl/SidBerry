@@ -33,7 +33,7 @@ using namespace std;
 #include <chrono>
 #include <thread>
 
-#include "driver/USBSID.h"
+#include <USBSID.h>
 
 
 #if defined(DEBUG_SIDBERRY)
