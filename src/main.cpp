@@ -869,7 +869,7 @@ int main(int argc, char *argv[])
                     : 1;
     sidno = 0;
     sidone = 0xD400;
-    printf("[1]$%04X ", sidone);
+    printf("SIDS: [1]$%04X ", sidone);
     if (sv == 3 || sv == 4 || sv == 78) {
         sidtwo = 0xD000 | (sid.GetSIDaddr(2) << 4);
         printf("[2]$%04X ", sidtwo);
@@ -984,8 +984,8 @@ int main(int argc, char *argv[])
     } else {
         play_rate = refresh_rate;
     }
-    printf("\n%d %d %d\n", play_rate, memory[0xDC04] + memory[0xDC05] * 256, memory[0xDC05] << 8 | memory[0xDC04]);
-    printf("\n%d %d %d\n", play_rate, memory[0xDC06] + memory[0xDC07] * 256, memory[0xDC06] << 8 | memory[0xDC07]);
+    // printf("\n%d %d %d\n", play_rate, memory[0xDC04] + memory[0xDC05] * 256, memory[0xDC05] << 8 | memory[0xDC04]);
+    // printf("\n%d %d %d\n", play_rate, memory[0xDC06] + memory[0xDC07] * 256, memory[0xDC06] << 8 | memory[0xDC07]);
     gettimeofday(&c1, NULL);
     gettimeofday(&c2, NULL);
     while (!exit || !stop)
