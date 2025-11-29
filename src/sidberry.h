@@ -33,7 +33,7 @@ using namespace std;
 #include <chrono>
 #include <thread>
 
-#include "driver/USBSID.h"
+#include <USBSID.h>
 
 
 #if defined(DEBUG_SIDBERRY)
@@ -42,6 +42,39 @@ using namespace std;
 #define DBG(...)
 #endif
 
+#if defined(WINDOWS_COMPILE)
+/* Source: https://stackoverflow.com/a/26085827 */
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <stdint.h> // portable: uint64_t   MSVC: __int64
+
+// MSVC defines this in winsock2.h!?
+// typedef struct timeval {
+//     long tv_sec;
+//     long tv_usec;
+// } timeval;
+
+int gettimeofday(struct timeval * tp, struct timezone * tzp)
+{
+    // Note: some broken versions only have 8 trailing zero's, the correct epoch has 9 trailing zero's
+    // This magic number is the number of 100 nanosecond intervals since January 1, 1601 (UTC)
+    // until 00:00:00 January 1, 1970
+    static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
+
+    SYSTEMTIME  system_time;
+    FILETIME    file_time;
+    uint64_t    time;
+
+    GetSystemTime( &system_time );
+    SystemTimeToFileTime( &system_time, &file_time );
+    time =  ((uint64_t)file_time.dwLowDateTime )      ;
+    time += ((uint64_t)file_time.dwHighDateTime) << 32;
+
+    tp->tv_sec  = (long) ((time - EPOCH) / 10000000L);
+    tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
+    return 0;
+}
+#endif
 
 // Clock cycles for the MOS6502
 #define CLOCK_CYCLES 100000
@@ -100,8 +133,9 @@ enum CIA1_registers
 
 static const enum clock_speeds clockSpeed[] = {UNKNOWN, PAL, NTSC, BOTH, DREAN};
 static const enum refresh_rates refreshRate[] = {DEFAULT, EU, US, GLOBAL};
-static const enum scan_lines scanLines[] = {C64_PAL_SCANLINES, C64_NTSC_SCANLINES};
-static const enum scanline_cycles scanlinesCycles[] = {C64_PAL_SCANLINE_CYCLES, C64_NTSC_SCANLINE_CYCLES};
+static const enum scan_lines scanLines[] = {C64_PAL_SCANLINES, C64_PAL_SCANLINES, C64_NTSC_SCANLINES, C64_NTSC_SCANLINES};
+static const enum scanline_cycles scanlinesCycles[] = {C64_PAL_SCANLINE_CYCLES, C64_PAL_SCANLINE_CYCLES, C64_NTSC_SCANLINE_CYCLES, C64_NTSC_SCANLINE_CYCLES};
+const char *sidtype[5] = {"Unknown", "N/A", "MOS8580", "MOS6581", "FMopl" };  /* 0 = unknown, 1 = N/A, 2 = MOS8085, 3 = MOS6581, 4 = FMopl */
 const char *chiptype[4] = {"Unknown", "MOS6581", "MOS8580", "MOS6581 and MOS8580"};
 const char *clockspeed[5] = {"Unknown", "PAL", "NTSC", "PAL and NTSC", "DREAN"};
 

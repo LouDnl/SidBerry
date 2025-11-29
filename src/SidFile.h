@@ -14,12 +14,12 @@ using namespace std;
 #endif
 
 #define PSID_MIN_HEADER_LENGTH 118 // Version 1
-#define PSID_MAX_HEADER_LENGTH 125 // Version 2 (124), 3 & 4
+#define PSID_MAX_HEADER_LENGTH 130 // Version 2 (124), 3 & 4, 78 (130)
 
 // Offsets of fields in header (all fields big-endian)
 enum
 {
-    SIDFILE_PSID_ID = 0,          // 'PSID'
+    SIDFILE_PSID_ID = 0x0,          // 'PSID'
     SIDFILE_PSID_VERSION_H = 4,   // 1, 2, 3 or 4
     SIDFILE_PSID_VERSION_L = 5,   // 1, 2, 3 or 4
     SIDFILE_PSID_LENGTH_H = 6,    // Header length
@@ -41,11 +41,14 @@ enum
 
     SIDFILE_PSID_FLAGS_H = 118,    // WORD Flags (only in version 2, 3 & 4 header)
     SIDFILE_PSID_FLAGS_L = 119,    // WORD Flags (only in version 2, 3 & 4 header)
-    SIDFILE_PSID_STARTPAGE = 120,  // BYTE startPage (relocStartPage)
+    SIDFILE_PSID_STARTPAGE  = 120,  // BYTE startPage (relocStartPage)
     SIDFILE_PSID_PAGELENGTH = 121, // BYTE pageLength (relocPages)
-    SIDFILE_PSID_SECONDSID = 122,  // BYTE secondSIDAddress $42..$FE
-    SIDFILE_PSID_THIRDSID = 123,   // BYTE thirdSIDAddress $42..$FE
-    SIDFILE_PSID_FOURTHSID = 124,  // BYTE fourthSIDAddress $42..$FE
+    SIDFILE_PSID_SECONDSID     = 0x7A,  // 122 BYTE secondSIDAddress $42..$FE
+    SIDFILE_PSID_THIRDSID      = 0x7B,  // 123 BYTE thirdSIDAddress $42..$FE
+
+    SIDFILEPLUS_PSID_SECONDSID = 0x7A,  // 122 BYTE secondSIDAddress $42..$FE
+    SIDFILEPLUS_PSID_THIRDSID  = 0x7C,  // 124 BYTE thirdSIDAddress $42..$FE
+    SIDFILEPLUS_PSID_FOURTHSID = 0x7E,  // 126 BYTE fourthSIDAddress $42..$FE
 };
 
 enum

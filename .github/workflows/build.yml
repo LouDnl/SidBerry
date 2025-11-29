@@ -41,9 +41,11 @@ jobs:
           sudo apt install -y curl \
                               build-essential \
                               cmake \
+                              libasound2-dev \
                               libusb-1.0-0 \
                               libusb-1.0-0-dev \
                               libusb-dev \
+                              libudev-dev \
                               udev
 
       - name: 📇 Checkout project

@@ -12,6 +12,7 @@ set(PROJECT_NAME usbsidberry)
 set(COMPILE_OPTS PRIVATE
   -g3
   -O0
+  # -Og
   # -Wall
   # -Wunused
   # -Werror
@@ -41,19 +42,27 @@ project(${PROJECT_NAME} C CXX ASM)
 find_package(PkgConfig REQUIRED)
 
 # these calls create special `PkgConfig::<MODULE>` variables
-pkg_check_modules(LIBUSB REQUIRED IMPORTED_TARGET libusb-1.0)
+pkg_check_modules(libusb REQUIRED IMPORTED_TARGET libusb-1.0)
 
 ### Libraries to link
 if (UNIX)
-pkg_check_modules(UDEV REQUIRED IMPORTED_TARGET udev)
+pkg_check_modules(udev REQUIRED IMPORTED_TARGET libudev)
+pkg_check_modules(asound REQUIRED IMPORTED_TARGET alsa)
+# pkg_check_modules(jack REQUIRED IMPORTED_TARGET jack)
+# pkg_check_modules(pthread REQUIRED IMPORTED_TARGET libpthread)
 set(TARGET_LL
-  PkgConfig::LIBUSB
-  PkgConfig::UDEV
+  PkgConfig::libusb
+  PkgConfig::udev
+  PkgConfig::asound
+  # PkgConfig::pthread
 )
 endif (UNIX)
 if (WIN32)
+#pkg_check_modules(asound REQUIRED IMPORTED_TARGET libwinmm)
 set(TARGET_LL
-  PkgConfig::LIBUSB
+  PkgConfig::libusb
+  #PkgConfig::libwinmm
+  -lwinmm
 )
 endif (WIN32)
 
@@ -62,7 +71,9 @@ set(SOURCEFILES
   ${CMAKE_CURRENT_LIST_DIR}/src/main.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/SidFile.cpp
   ${CMAKE_CURRENT_LIST_DIR}/src/mos6502/mos6502.cpp
-  ${CMAKE_CURRENT_LIST_DIR}/src/driver/USBSID.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/driver/src/USBSID.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/midi/RtMidi.cpp
+  ${CMAKE_CURRENT_LIST_DIR}/src/midi/asid.cpp
   ${WIN32_SRC}
 )
 ### Header folders to include
@@ -71,7 +82,8 @@ set(TARGET_INCLUDE_DIRS PRIVATE
   src
   ${CMAKE_CURRENT_LIST_DIR}/src
   ${CMAKE_CURRENT_LIST_DIR}/src/mos6502
-  ${CMAKE_CURRENT_LIST_DIR}/src/driver
+  ${CMAKE_CURRENT_LIST_DIR}/src/driver/src
+  ${CMAKE_CURRENT_LIST_DIR}/src/midi
   ${WIN32_INC}
   /usr/local/lib
   /usr/local/include
@@ -82,8 +94,16 @@ set(TARGET_INCLUDE_DIRS PRIVATE
 ### Compile time
 add_executable(${PROJECT_NAME} ${SOURCEFILES})
 
+if (UNIX)
+target_compile_definitions(${PROJECT_NAME} PRIVATE UNIX_COMPILE)
+# target_compile_definitions(${PROJECT_NAME} PRIVATE __LINUX_ALSA__)
+# target_compile_definitions(${PROJECT_NAME} PRIVATE __RTMIDI_DEBUG__)
+endif (UNIX)
+
 if (WIN32)
 target_compile_definitions(${PROJECT_NAME} PRIVATE TERMIWIN_DONOTREDEFINE=1)
+target_compile_definitions(${PROJECT_NAME} PRIVATE WINDOWS_COMPILE)
+#target_compile_definitions(${PROJECT_NAME} PRIVATE __WINDOWS_MM__)
 endif (WIN32)
 
 target_include_directories(${PROJECT_NAME} ${TARGET_INCLUDE_DIRS})
