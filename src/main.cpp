@@ -67,7 +67,7 @@ bool real_read = true;         // use actual pin reading when USBSID-Pico
 timeval t1, t2, t3, t4, c1, c2;
 long int elaps;
 
-uint64_t cyclecount, last_write_cyclecount;
+uint64_t cyclecount, last_write_cyclecount, last_sidwr_cyclecount;
 static uint32_t frames, p_frames;
 
 extern void list_ports(void);
@@ -284,7 +284,7 @@ void MemWrite(uint16_t addr, uint8_t byte)
         uint8_t phyaddr = addr_translation(addr) & 0xFF;  /* 4 SIDs max */
         unsigned char buff[3] = { 0x0, phyaddr, byte };   /* 3 Byte buffer */
         if (use_usbsid && !use_cycles) us_sid->USBSID_Write(buff, 3);
-        if (use_usbsid && use_cycles) us_sid->USBSID_WriteRingCycled(phyaddr, byte, (cyclecount - last_write_cyclecount));  /* 6 cycles default for now untill I figure out how to calculate cycles :) */
+        if (use_usbsid && use_cycles) us_sid->USBSID_WriteRingCycled(phyaddr, byte, (cyclecount - last_sidwr_cyclecount));
         // if (use_usbsid && use_cycles) us_sid->USBSID_WriteRingCycled(phyaddr, byte, (c1.tv_usec - c2.tv_usec) + 6);  /* 6 cycles */
         // if (use_usbsid) us_sid->USBSID_WriteRing(phyaddr, byte);
         // if (use_usbsid) us_sid->USBSID_WriteRingCycled(phyaddr, byte, (c1.tv_usec - c2.tv_usec));
@@ -309,6 +309,7 @@ void MemWrite(uint16_t addr, uint8_t byte)
             printf("[%d][W]@%02x [D]%02x [F]%u [C]%u %u\n", sidno, phyaddr, byte, frames, (c1.tv_usec - c2.tv_usec), (cyclecount - last_write_cyclecount));
         }
         // v1 = v2;
+        last_sidwr_cyclecount = cyclecount;
     }
     else
     {
@@ -545,7 +546,11 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
     {
         if (use_usbsid) {
             if (pcbversion == 13) {
-                us_sid->USBSID_ToggleStereo();
+                if (*paused) {
+                    us_sid->USBSID_ToggleStereo();
+                } else {
+                    fprintf(stdout, "PRESS PAUSE FIRST!\n");
+                }
             }
         }
     }
@@ -616,7 +621,7 @@ void USBSIDSetup(void)
         }
     }
     if (use_usbsid && use_cycles) {
-        printf("Opening USBSID-Pico with buffer\n");
+        printf("Opening USBSID-Pico with buffer for cycle exact writing\n");
         if (us_sid->USBSID_Init(true, true) < 0) {
             printf("USBSID-Pico not found, exiting...\n");
             exit(1);
@@ -628,6 +633,7 @@ void USBSIDSetup(void)
     #ifndef NO_REBOOT
     us_sid->USBSID_Mute();
     us_sid->USBSID_ClearBus();
+    us_sid->USBSID_UnMute();
     #endif
 }
 
@@ -963,7 +969,7 @@ int main(int argc, char *argv[])
     cout << "W           : Volume up " << endl;
     cout << "S           : Volume down " << endl;
     if (pcbversion == 13) {
-        cout << "A           : Toggle mono/stereo " << endl;
+        cout << "A           : Toggle mono/stereo (Works during pause only!)" << endl;
     }
     cout << "Q or Escape : Quit " << endl
          << endl;
@@ -1028,7 +1034,7 @@ int main(int argc, char *argv[])
             // if ((frames - p_frames) >= 1) asid_flush();
         }
         if (use_cycles) {
-            us_sid->USBSID_Flush();
+            us_sid->USBSID_SetFlush();
         }
         gettimeofday(&t3, NULL);
         if (t3.tv_sec != t4.tv_sec)
