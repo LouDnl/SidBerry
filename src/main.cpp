@@ -546,11 +546,7 @@ void change_player_status(mos6502 cpu, SidFile sid, int key_press, bool *paused,
     {
         if (use_usbsid) {
             if (pcbversion == 13) {
-                if (*paused) {
-                    us_sid->USBSID_ToggleStereo();
-                } else {
-                    fprintf(stdout, "PRESS PAUSE FIRST!\n");
-                }
+                us_sid->USBSID_ToggleStereo();
             }
         }
     }
@@ -889,6 +885,8 @@ int main(int argc, char *argv[])
     if (use_usbsid) {
         USBSIDSetup();  /* Setup for playing SID files */
 
+        us_sid->USBSID_GetPCBVersion();
+
         if(us_sid->USBSID_GetClockRate() != clock_speed) {
             us_sid->USBSID_SetClockRate(clock_speed, true);
         }
@@ -900,18 +898,14 @@ int main(int argc, char *argv[])
         uint8_t socket_config[10];
         us_sid->USBSID_GetSocketConfig(socket_config);
         printf("SOCKET CONFIG: ");
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < SOCKET_BUFFER_SIZE; i++) {
             printf("%02X ", socket_config[i]);
         }
         printf("\n");
 
-        printf("SOCK1#.%d SID1:%d SID2:%d\nSOCK2#.%d SID1:%d SID2:%d\n",
-            us_sid->USBSID_GetSocketNumSIDS(1, socket_config),
-            us_sid->USBSID_GetSocketSIDType1(1, socket_config),
-            us_sid->USBSID_GetSocketSIDType2(1, socket_config),
-            us_sid->USBSID_GetSocketNumSIDS(2, socket_config),
-            us_sid->USBSID_GetSocketSIDType1(2, socket_config),
-            us_sid->USBSID_GetSocketSIDType2(2, socket_config)
+        printf("SOCK1# Chip: %d SOCK2# Chip: %d\n",
+            us_sid->USBSID_GetSocketChipType(1, socket_config),
+            us_sid->USBSID_GetSocketChipType(2, socket_config)
         );
 
         sidssockone = us_sid->USBSID_GetSocketNumSIDS(1, socket_config);
@@ -922,6 +916,11 @@ int main(int argc, char *argv[])
         socktwosidtwo = us_sid->USBSID_GetSocketSIDType2(2, socket_config);
         fmoplsidno = us_sid->USBSID_GetFMOplSID();
         pcbversion = us_sid->USBSID_GetPCBVersion();
+
+        printf("SOCK1#.%d SID1:%d SID2:%d\nSOCK2#.%d SID1:%d SID2:%d\n",
+            sidssockone, sockonesidone, sockonesidtwo,
+            sidssocktwo, socktwosidone, socktwosidtwo
+        );
     }
 
     if (use_asid) {
